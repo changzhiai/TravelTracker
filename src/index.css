@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafd;
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
+    position: relative;
+  }
+}
+
+@layer components {
+  /* Default subtle fill for unselected countries/states: Light gray/blue */
+  .country-path {
+    fill: #E8EDF1;
+    stroke: #ffffff;
+    stroke-width: 0.5px;
+    cursor: pointer;
+    transition: fill 0.2s;
+  }
+
+  /* Highlight path on hover */
+  .country-path:hover {
+    fill: #dbeafe; /* Light blue on hover */
+  }
+
+  /* Custom class for the active/clicked path (Vibrant Emerald) */
+  .country-highlight {
+    fill: #10b981 !important; /* Tailwind emerald-500 */
+    stroke: #047857; /* Darker emerald border */
+    stroke-width: 0.75px;
+  }
+
+  /* Style for the sidebar list items */
+  .country-list-item {
+    cursor: pointer;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: #374151;
+    transition: background-color 0.15s;
+  }
+  .country-list-item:hover {
+    background-color: #f3f4f6;
+  }
+  .country-list-item.selected {
+    background-color: #d1fae5; /* Very light emerald background */
+    font-weight: 600;
+    color: #065f46;
+  }
+
+  /* Map Labels */
+  .map-label {
+    font-size: 10px;
+    pointer-events: none; /* Allows clicks to pass through to the map path */
+    fill: #374151;
+    font-weight: 500;
+    text-anchor: middle;
+    text-transform: uppercase;
+  }
+
+  /* Ensure the SVG scales within the map container */
+  #map-container {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    z-index: 0;
+  }
+  
+  #map-container svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  
+  #map-group {
+    z-index: 1;
+  }
+  
+  #label-group {
+    z-index: 2;
+  }
+
+  /* Custom style for the select elements */
+  .custom-select {
+    /* Remove default browser styles */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3e%3cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3e%3c/path%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.5rem;
+  }
+}
