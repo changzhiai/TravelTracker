@@ -343,48 +343,6 @@ function App() {
     }, 0); // Use setTimeout instead of requestAnimationFrame to batch better
   }, [currentFeatures]);
 
-  // Render map
-  const renderMap = useCallback(async () => {
-    if (!mapContainerRef.current || !svgRef.current || !mapGroupRef.current || !pathRef.current) {
-      console.warn('Map render skipped: missing refs', {
-        container: !!mapContainerRef.current,
-        svg: !!svgRef.current,
-        mapGroup: !!mapGroupRef.current,
-        path: !!pathRef.current
-      });
-      return;
-    }
-
-    const dims = updateSvgDimensions();
-    console.log('Rendering map with dimensions:', dims, 'features:', currentFeatures.length);
-
-    const paths = mapGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".country-path")
-      .data(currentFeatures, (d: GeoFeature) => d.properties.name);
-
-    const joined = paths.join("path")
-      .attr("class", "country-path")
-      .attr("data-name", (d: GeoFeature) => d.properties.name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, ''))
-      .attr("d", (d: GeoFeature) => pathRef.current!(d))
-      .on("click", function(event: MouseEvent, d: GeoFeature) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation(); // Prevent zoom from handling this event
-        if (event.type === "mousemove") return;
-        if (!d.properties.name) return;
-        handleLocationToggle(d.properties.name);
-      })
-      .on("mousedown", function(event: MouseEvent) {
-        // Prevent zoom from starting when clicking on paths
-        event.stopPropagation();
-      })
-      .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
-
-    console.log('Map paths rendered:', joined.size());
-
-    if (showLabelsRef.current) {
-      renderLabels();
-    }
-  }, [currentFeatures, updateSvgDimensions, handleLocationToggle, renderLabels]);
 
   // Handle scope selection
   const handleScopeSelection = useCallback(async (scope: Scope) => {
