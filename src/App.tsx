@@ -4,6 +4,7 @@ import { geoMiller } from 'd3-geo-projection';
 import { feature } from 'topojson-client';
 import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
+import logoImage from '/logo_tt.png';
 import './App.css';
 
 // Type definitions
@@ -1016,22 +1017,24 @@ function App() {
     .sort();
 
   return (
-    <div className="p-4">
+    <div className="p-4 min-h-screen">
       {/* Header */}
-      <header className="flex justify-between items-center py-3 px-4 mb-4 bg-white shadow-md rounded-lg">
+      <header className="flex justify-between items-center py-4 px-6 mb-6 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20">
         <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
           <div className="flex items-center space-x-2">
-            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h1.5M21 12.9a9 9 0 11-17.65 0"></path>
-            </svg>
-            <h1 className="text-xl font-bold text-gray-900">Travel Tracker</h1>
+            <img 
+              src={logoImage} 
+              alt="Travel Tracker Logo" 
+              className="w-8 h-8 object-contain flex-shrink-0"
+            />
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
           </div>
 
           <div className="relative w-24 sm:w-28">
             <select
               value={currentScope}
               onChange={(e) => handleScopeSelection(e.target.value as Scope)}
-              className="custom-select block w-full text-sm py-1.5 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 font-medium"
+              className="custom-select block w-full text-sm py-2 px-4 border-2 border-indigo-200 bg-white/90 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 font-medium transition-all hover:border-indigo-300 hover:shadow-lg"
             >
               <option value="world">World</option>
               <option value="usa">USA</option>
@@ -1044,13 +1047,13 @@ function App() {
         </div>
 
         <div className="flex items-center space-x-4 text-sm font-medium hidden sm:flex">
-          <div className="flex items-center space-x-1 text-yellow-600">
-            <span className="font-extrabold">{locationsCount}</span>
-            <span>{locationTypeLabel}</span>
+          <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200">
+            <span className="text-2xl font-extrabold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">{locationsCount}</span>
+            <span className="text-amber-700 font-semibold">{locationTypeLabel}</span>
           </div>
-          <div className="flex items-center space-x-1 text-gray-600">
-            <span className="font-extrabold">{percentage}</span>
-            <span>{totalTypeLabel}</span>
+          <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
+            <span className="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{percentage}</span>
+            <span className="text-indigo-700 font-semibold">{totalTypeLabel}</span>
           </div>
         </div>
       </header>
@@ -1058,44 +1061,44 @@ function App() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-100px)] space-x-4">
         {/* Map Container */}
-        <div className="flex-grow bg-white shadow-xl rounded-xl p-6 relative flex flex-col">
+        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl p-6 relative flex flex-col border border-white/20">
           <div className="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-3">
-            <h2 className="text-lg font-semibold text-gray-700 whitespace-nowrap">{mapTitle}</h2>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
 
             <div className="flex items-center space-x-3">
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              <div className="flex items-center gap-1 bg-gradient-to-r from-slate-50 to-gray-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
                 <button
                   onClick={handleZoomIn}
-                  className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
+                  className="p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
                   title="Zoom In"
                 >
-                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
                   </svg>
                 </button>
 
                 <button
                   onClick={handleZoomOut}
-                  className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
+                  className="p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
                   title="Zoom Out"
                 >
-                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path>
                   </svg>
                 </button>
 
                 <button
                   onClick={resetView}
-                  className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
+                  className="p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
                   title="Reset View (Return to initial position)"
                 >
-                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 0a8.001 8.001 0 01-15.356 2M4 4h5"></path>
                   </svg>
                 </button>
               </div>
 
-              <div className="h-6 w-px bg-gray-300"></div>
+              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
 
               <div className="flex items-center space-x-2">
                 <button
@@ -1146,10 +1149,10 @@ function App() {
                       });
                     }
                   }}
-                  className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                  className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
                     activeLocations.size === currentFeatures.filter(d => d.properties.name).length && activeLocations.size > 0
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600' 
+                      : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                   }`}
                   title={activeLocations.size === currentFeatures.filter(d => d.properties.name).length && activeLocations.size > 0 ? "Deselect all locations" : "Select all locations"}
                 >
@@ -1161,10 +1164,10 @@ function App() {
                 
                 <button
                   onClick={() => setShowLabels(!showLabels)}
-                  className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                  className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
                     showLabels 
-                      ? 'bg-emerald-100 text-emerald-700' 
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600' 
+                      : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                   }`}
                   title="Toggle country/state labels for selected locations"
                 >
@@ -1176,7 +1179,7 @@ function App() {
 
                 <button
                   onClick={saveMapAsPNG}
-                  className="text-xs flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                  className="text-sm flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
                   title="Export map as PNG image (high quality)"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1188,7 +1191,7 @@ function App() {
             </div>
           </div>
 
-          <div id="map-container" ref={mapContainerRef} className="flex-grow w-full relative overflow-hidden bg-gray-50"></div>
+          <div id="map-container" ref={mapContainerRef} className="flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50"></div>
           
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm z-50 rounded-xl pointer-events-none">
@@ -1201,26 +1204,26 @@ function App() {
               </div>
             </div>
           )}
-          <p className="text-xs text-gray-400 text-right mt-2">Scroll to zoom • Click/Drag to pan</p>
+          <p className="text-xs text-gray-500 text-right mt-3 font-medium">Scroll to zoom • Click/Drag to pan</p>
         </div>
 
         {/* Sidebar */}
-        <div className="w-96 bg-white shadow-xl rounded-xl p-4 flex flex-col">
-          <h2 className="text-lg font-semibold text-gray-700 border-b pb-3 mb-3">{listTitle}</h2>
-          <div className="relative mb-3">
+        <div className="w-96 bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl p-6 flex flex-col border border-white/20">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent border-b border-gray-200 pb-3 mb-4">{listTitle}</h2>
+          <div className="relative mb-4">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              placeholder="Search locations..."
+              className="w-full pl-10 pr-4 py-3 border-2 border-indigo-200 bg-white/90 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-md transition-all hover:border-indigo-300"
             />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
           </div>
 
-          <div ref={listContainerRef} className="flex-grow overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+          <div ref={listContainerRef} className="flex-grow overflow-y-auto border-2 border-gray-100 rounded-xl divide-y divide-gray-100 bg-gradient-to-b from-white to-gray-50/50">
             {filteredLocations.map((name) => {
               const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
               // Use a ref to track selection state to avoid re-renders
@@ -1258,7 +1261,7 @@ function App() {
                     checked={isSelected}
                     readOnly
                     tabIndex={-1}
-                    className="form-checkbox text-emerald-500 h-4 w-4 border-gray-300 rounded-full focus:ring-emerald-400 pointer-events-none"
+                    className="form-checkbox text-emerald-500 h-5 w-5 border-2 border-gray-300 rounded-full focus:ring-emerald-400 pointer-events-none shadow-sm"
                   />
                 </div>
               );
