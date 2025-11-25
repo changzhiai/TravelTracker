@@ -20,19 +20,19 @@ The application is automatically deployed via GitHub Actions on every push to th
 <div align="center">
 
 #### 🌍 World Map
-![World Map](https://changzhiai.github.io/TravelTracker/World.png)
+![World Map](./public/World.png)
 
 #### 🇺🇸 USA Map
-![USA Map](https://changzhiai.github.io/TravelTracker/USA.png)
+![USA Map](./public/USA.png)
 
 #### 🇪🇺 Europe Map
-![Europe Map](https://changzhiai.github.io/TravelTracker/Europe.png)
+![Europe Map](./public/Europe.png)
 
 #### 🇨🇳 China Map
-![China Map](https://changzhiai.github.io/TravelTracker/China.png)
+![China Map](./public/China.png)
 
 #### 🇮🇳 India Map
-![India Map](https://changzhiai.github.io/TravelTracker/India.png)
+![India Map](./public/India.png)
 
 </div>
 
