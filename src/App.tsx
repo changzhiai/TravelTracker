@@ -41,6 +41,7 @@ function App() {
   const [showLabels, setShowLabels] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showListOnMobile, setShowListOnMobile] = useState(false);
   const [worldCountryFeatures, setWorldCountryFeatures] = useState<GeoFeature[]>([]);
   const [usStateFeatures, setUsStateFeatures] = useState<GeoFeature[]>([]);
   const [europeCountryFeatures, setEuropeCountryFeatures] = useState<GeoFeature[]>([]);
@@ -1216,9 +1217,9 @@ function App() {
     .sort();
 
   return (
-    <div className="p-4 min-h-screen">
+    <div className="py-4 min-h-screen">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 px-4 sm:px-6 mb-4 sm:mb-6 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 px-4 sm:px-6 mb-4 sm:mb-6 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 sm:mx-0">
         <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-2">
             <img 
@@ -1260,11 +1261,23 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-100px)] space-x-4">
+      <div className="flex h-[calc(100vh-100px)] space-x-4 relative pl-4 pr-0 sm:px-0">
         {/* Map Container */}
-        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl p-6 relative flex flex-col border border-white/20">
+        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20">
           <div className="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-3">
-            <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
+              {/* Mobile List Toggle Button */}
+              <button
+                onClick={() => setShowListOnMobile(!showListOnMobile)}
+                className="lg:hidden flex items-center justify-center w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
+                title="Toggle locations list"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+              </button>
+            </div>
 
             <div className="flex items-center space-x-3">
               <div className="flex items-center gap-1 bg-gradient-to-r from-slate-50 to-gray-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
@@ -1409,7 +1422,19 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className="w-96 bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl p-6 flex flex-col border border-white/20">
+        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl p-4 sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${
+          showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        }`}>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setShowListOnMobile(false)}
+            className="lg:hidden absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10"
+            title="Close list"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
           <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent border-b border-gray-200 pb-3 mb-4">{listTitle}</h2>
           <div className="relative mb-4">
             <input
@@ -1469,6 +1494,15 @@ function App() {
             })}
           </div>
         </div>
+        
+        {/* Mobile overlay when list is open */}
+        {showListOnMobile && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowListOnMobile(false)}
+            style={{ top: 0, left: 0, right: 0, bottom: 0 }}
+          ></div>
+        )}
       </div>
 
       {/* Notification Container */}
