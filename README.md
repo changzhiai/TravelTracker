@@ -5,13 +5,38 @@ An interactive world map application built with React, TypeScript, and D3.js for
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://changzhiai.github.io/TravelTracker)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## 📧 Contact
 
-For questions, suggestions, or feedback, please contact: **changzhiai@gmail.com**
-
-## 🎯 Live Demo
+## 🎯 Live Maps
 
 **👉 [View Live Application](https://changzhiai.github.io/TravelTracker)**
+
+The application is automatically deployed via GitHub Actions on every push to the `main` branch.
+
+
+## 📸 Screenshots
+
+### Map Views
+
+<div align="center">
+
+#### 🌍 World Map
+![World Map](https://changzhiai.github.io/TravelTracker/World.png)
+
+#### 🇺🇸 USA Map
+![USA Map](https://changzhiai.github.io/TravelTracker/USA.png)
+
+#### 🇪🇺 Europe Map
+![Europe Map](https://changzhiai.github.io/TravelTracker/Europe.png)
+
+#### 🇨🇳 China Map
+![China Map](https://changzhiai.github.io/TravelTracker/China.png)
+
+#### 🇮🇳 India Map
+![India Map](https://changzhiai.github.io/TravelTracker/India.png)
+
+</div>
+
+
 
 ## Features
 
@@ -79,26 +104,15 @@ This project is configured for GitHub Pages deployment.
 2. Update the `homepage` field in `package.json` with your GitHub username
 3. Run: `npm run deploy`
 
-## 📸 Screenshots
 
-> **Tip:** To add screenshots to your README:
-> 1. Take screenshots of your application
-> 2. Save them in a `docs/` or `screenshots/` folder
-> 3. Reference them like: `![Screenshot](docs/screenshot.png)`
+> **Note**: These screenshots show the different map views available in the application. For the full interactive experience, visit the [live demo](#-live-demo).
 
-### Example Screenshot Format:
-```markdown
-![World Map View](docs/world-map.png)
-![USA Map View](docs/usa-map.png)
-![Mobile View](docs/mobile-view.png)
-```
-
-## 🔗 Live Demo
-
-**👉 [Visit Live Application](https://changzhiai.github.io/TravelTracker)**
-
-The application is automatically deployed via GitHub Actions on every push to the `main` branch.
 
 ## ⚠️ Data Accuracy Note
 
-**Important:** Some data may not be completely accurate. For example: there are generally recognized to be **195 countries** in the world (193 UN member states + 2 observer states), but this application includes **~176 countries/territories** based on the Natural Earth dataset used. The map data is sourced from publicly available GeoJSON/TopoJSON datasets, and the exact count may vary depending on the data source and how territories are classified. This is common across different mapping applications and datasets.
+Some data may not be completely accurate. For example: there are generally recognized to be **195 countries** in the world (193 UN member states + 2 observer states), but this application includes **~176 countries/territories** based on the Natural Earth dataset used. The map data is sourced from publicly available GeoJSON/TopoJSON datasets, and the exact count may vary depending on the data source and how territories are classified. This is common across different mapping applications and datasets.
+
+
+## 📧 Contact
+
+For questions, suggestions, or feedback, please contact: **changzhiai@gmail.com**
