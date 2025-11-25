@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 import { geoMiller } from 'd3-geo-projection';
 import { feature } from 'topojson-client';
+import { union } from '@turf/turf';
 import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import logoImage from '/logo_tt.png';
 import './App.css';
 
 // Type definitions
-type Scope = 'world' | 'usa' | 'europe' | 'china';
+type Scope = 'world' | 'usa' | 'europe' | 'china' | 'india';
 type NotificationType = 'success' | 'error';
 
 interface GeoFeature extends Feature {
@@ -31,6 +32,7 @@ const WORLD_GEOJSON_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gal
 const USA_STATES_URL = 'https://unpkg.com/us-atlas@3.0.0/states-10m.json';
 const CHINA_PROVINCES_URL = 'https://raw.githubusercontent.com/junwang23/geoCN/refs/heads/master/geojson/china_provinces.json';
 const EUROPE_TOPJSON_URL = 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/refs/heads/master/TopoJSON/europe.topojson';
+const INDIA_STATES_URL = 'https://raw.githubusercontent.com/adarshbiradar/maps-geojson/refs/heads/master/india.json';
 
 function App() {
   // State management
@@ -43,6 +45,7 @@ function App() {
   const [usStateFeatures, setUsStateFeatures] = useState<GeoFeature[]>([]);
   const [europeCountryFeatures, setEuropeCountryFeatures] = useState<GeoFeature[]>([]);
   const [chinaProvinceFeatures, setChinaProvinceFeatures] = useState<GeoFeature[]>([]);
+  const [indiaStateFeatures, setIndiaStateFeatures] = useState<GeoFeature[]>([]);
 
   // Refs for D3.js
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -61,36 +64,44 @@ function App() {
     currentScope === 'world' ? worldCountryFeatures :
     currentScope === 'usa' ? usStateFeatures :
     currentScope === 'europe' ? europeCountryFeatures :
-    chinaProvinceFeatures;
+    currentScope === 'china' ? chinaProvinceFeatures :
+    indiaStateFeatures;
   
   const locationTypeLabel = 
     currentScope === 'world' ? 'Countries' :
     currentScope === 'usa' ? 'States' :
     currentScope === 'europe' ? 'Countries' :
-    'Provinces';
+    currentScope === 'china' ? 'Provinces' :
+    'States';
   
   const totalTypeLabel = 
     currentScope === 'world' ? '% World' :
     currentScope === 'usa' ? '% USA' :
     currentScope === 'europe' ? '% Europe' :
-    '% China';
+    currentScope === 'china' ? '% China' :
+    '% India';
   
   const mapTitle = 
     currentScope === 'world' ? 'World Map' :
     currentScope === 'usa' ? 'USA Map' :
     currentScope === 'europe' ? 'Europe Map' :
-    'China Map';
+    currentScope === 'china' ? 'China Map' :
+    'India Map';
   
   const listTitle = 
     currentScope === 'world' ? 'Countries List' :
     currentScope === 'usa' ? 'States List' :
     currentScope === 'europe' ? 'Countries List' :
-    'Provinces List';
+    currentScope === 'china' ? 'Provinces List' :
+    'States List';
   
   const locationsCount = activeLocations.size;
-  const totalReference = currentScope === 'world' 
-    ? worldCountryFeatures.length 
-    : usStateFeatures.length;
+  const totalReference = 
+    currentScope === 'world' ? worldCountryFeatures.length :
+    currentScope === 'usa' ? usStateFeatures.length :
+    currentScope === 'europe' ? europeCountryFeatures.length :
+    currentScope === 'china' ? chinaProvinceFeatures.length :
+    indiaStateFeatures.length;
   const percentage = totalReference > 0 
     ? ((locationsCount / totalReference) * 100).toFixed(1) 
     : '0.0';
@@ -310,6 +321,137 @@ function App() {
     }
   }, [showNotification]);
 
+  // Load India states data
+  const loadIndiaData = useCallback(async () => {
+    if (indiaStateFeatures.length > 0) return;
+
+    try {
+      console.log('Loading India states data from:', INDIA_STATES_URL);
+      const geoJsonData = await d3.json<FeatureCollection>(INDIA_STATES_URL);
+      if (!geoJsonData) throw new Error('Failed to load India states data');
+      
+      console.log('Raw data loaded, total features:', geoJsonData.features.length);
+      
+      // Process features - this data already has state-level boundaries
+      // First, separate the two union territories that need to be merged
+      let dadraFeature: GeoFeature | null = null;
+      let damanFeature: GeoFeature | null = null;
+      
+      const processedFeatures = (geoJsonData.features as GeoFeature[])
+        .filter(d => {
+          if (!d.properties || !d.properties.st_nm) return false;
+          if (!d.geometry) return false;
+          const geom = d.geometry;
+          if (geom.type === 'GeometryCollection') return false;
+          
+          const stateName = String(d.properties.st_nm || '');
+          // Check if this is one of the territories to merge
+          if (stateName === 'Dadra and Nagar Haveli') {
+            dadraFeature = {
+              ...d,
+              properties: { name: stateName }
+            } as GeoFeature;
+            return false; // Don't include in main list yet
+          }
+          if (stateName === 'Daman and Diu') {
+            damanFeature = {
+              ...d,
+              properties: { name: stateName }
+            } as GeoFeature;
+            return false; // Don't include in main list yet
+          }
+          
+          return true;
+        })
+        .map(feature => {
+          const props = feature.properties;
+          // Use st_nm as the name property
+          const stateName = props.st_nm || 'Unknown';
+          return {
+            ...feature,
+            properties: {
+              name: String(stateName)
+            }
+          } as GeoFeature;
+        });
+      
+      // Merge Dadra and Nagar Haveli with Daman and Diu if both exist
+      if (dadraFeature && damanFeature) {
+        // Store in local variables with explicit types to help TypeScript
+        const dadra: GeoFeature = dadraFeature;
+        const daman: GeoFeature = damanFeature;
+        
+        try {
+          // Use turf.union to properly merge the geometries
+          const merged = union(dadra as any, daman as any);
+          if (merged && merged.geometry) {
+            const mergedFeature: GeoFeature = {
+              type: 'Feature',
+              properties: {
+                name: 'Dadra and Nagar Haveli and Daman and Diu'
+              },
+              geometry: merged.geometry
+            };
+            processedFeatures.push(mergedFeature);
+            console.log('Merged Dadra and Nagar Haveli with Daman and Diu into single Union Territory');
+          } else {
+            throw new Error('Union returned no geometry');
+          }
+        } catch (error) {
+          console.warn('Error merging territories with union, using MultiPolygon fallback:', error);
+          // Fallback: combine as MultiPolygon
+          const dadraGeom = dadra.geometry;
+          const damanGeom = daman.geometry;
+          
+          const dadraCoords = dadraGeom.type === 'Polygon' 
+            ? [dadraGeom.coordinates]
+            : dadraGeom.type === 'MultiPolygon'
+            ? dadraGeom.coordinates
+            : [];
+          
+          const damanCoords = damanGeom.type === 'Polygon'
+            ? [damanGeom.coordinates]
+            : damanGeom.type === 'MultiPolygon'
+            ? damanGeom.coordinates
+            : [];
+          
+          const mergedGeometry: any = {
+            type: 'MultiPolygon',
+            coordinates: [...dadraCoords, ...damanCoords]
+          };
+          
+          const mergedFeature: GeoFeature = {
+            type: 'Feature',
+            properties: {
+              name: 'Dadra and Nagar Haveli and Daman and Diu'
+            },
+            geometry: mergedGeometry
+          };
+          processedFeatures.push(mergedFeature);
+        }
+      } else if (dadraFeature) {
+        // If only Dadra exists, keep it as is
+        processedFeatures.push(dadraFeature);
+      } else if (damanFeature) {
+        // If only Daman exists, keep it as is
+        processedFeatures.push(damanFeature);
+      }
+      
+      const features = processedFeatures;
+      
+      console.log(`India states map data loaded successfully. Found ${features.length} states.`);
+      if (features.length > 0) {
+        console.log('Sample state:', features[0].properties.name);
+      }
+      
+      setIndiaStateFeatures(features);
+    } catch (error) {
+      console.error("Error loading India states map data:", error);
+      showNotification("Failed to load India states map data. Check the console.", 'error');
+      setIndiaStateFeatures([]);
+    }
+  }, [showNotification, indiaStateFeatures.length]);
+
   // Update SVG dimensions
   const updateSvgDimensions = useCallback(() => {
     if (!mapContainerRef.current || !svgRef.current) return { width: 0, height: 0 };
@@ -521,13 +663,15 @@ function App() {
       await loadEuropeData();
     } else if (scope === 'china') {
       await loadChinaData();
+    } else if (scope === 'india') {
+      await loadIndiaData();
     }
     
     setIsLoading(false);
 
     // Update scope - the useEffect will handle all rendering with proper transform
     setCurrentScope(scope);
-  }, [currentScope, loadUSAData, loadEuropeData, loadChinaData]);
+  }, [currentScope, loadUSAData, loadEuropeData, loadChinaData, loadIndiaData]);
 
   // Save map as PNG
   const saveMapAsPNG = useCallback(() => {
@@ -909,12 +1053,15 @@ function App() {
         const europeProjection = d3.geoMercator().center([15, 55]).scale(800);
         // For China, use Mercator projection - will be fitted to bounds
         const chinaProjection = d3.geoMercator();
+        // For India, use Mercator projection - will be fitted to bounds
+        const indiaProjection = d3.geoMercator();
         
         const projection = 
           currentScope === 'world' ? worldProjection :
           currentScope === 'usa' ? usaProjection :
           currentScope === 'europe' ? europeProjection :
-          chinaProjection;
+          currentScope === 'china' ? chinaProjection :
+          indiaProjection;
         currentProjectionRef.current = projection;
 
         const path = d3.geoPath().projection(projection);
@@ -949,6 +1096,23 @@ function App() {
                 scale: projection.scale(),
                 translate: projection.translate()
               });
+            } else if (currentScope === 'india') {
+              // For India, use fitSize similar to China
+              const bounds = d3.geoBounds(featureCollection);
+              console.log('India geographic bounds:', bounds);
+              
+              // Use fitSize with some padding
+              const padding = 60;
+              projection.fitSize([dims.width - padding * 2, dims.height - padding * 2], featureCollection);
+              
+              // Get current translate and adjust for padding
+              const currentTranslate = projection.translate();
+              projection.translate([currentTranslate[0] + padding, currentTranslate[1] + padding]);
+              
+              console.log('India projection after fitSize:', {
+                translate: projection.translate(),
+                scale: projection.scale()
+              });
             } else {
               projection.fitSize([dims.width, dims.height], featureCollection);
             }
@@ -958,6 +1122,9 @@ function App() {
             if (currentScope === 'china') {
               (projection as d3.GeoProjection).center([105, 35]).scale(1000);
               console.log('Using fallback projection for China');
+            } else if (currentScope === 'india') {
+              (projection as d3.GeoProjection).center([77, 23]).scale(1000);
+              console.log('Using fallback projection for India');
             }
           }
           
@@ -1072,6 +1239,7 @@ function App() {
               <option value="usa">🇺🇸 USA</option>
               <option value="europe">🇪🇺 Europe</option>
               <option value="china">🇨🇳 China</option>
+              <option value="india">🇮🇳 India</option>
             </select>
           </div>
 

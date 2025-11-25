@@ -12,6 +12,7 @@
   },
   "homepage": "https://changzhiai.github.io/TravelTracker",
   "dependencies": {
+    "@turf/turf": "^7.3.0",
     "d3": "^7.9.0",
     "d3-geo-projection": "^4.0.0",
     "react": "^19.2.0",
