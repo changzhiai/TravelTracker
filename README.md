@@ -42,6 +42,7 @@ The application is automatically deployed via GitHub Actions on every push to th
 
 - 🌍 **World Map View** - Track countries you've visited (~177 countries)
 - 🇺🇸 **USA Map View** - Track US states you've visited (50 states)
+- 🏞️ **US National Parks View** - Explore and track 63 US national parks
 - 🇪🇺 **Europe Map View** - Track European countries you've visited
 - 🇨🇳 **China Map View** - Track Chinese provinces you've visited
 - 🇮🇳 **India Map View** - Track Indian states and union territories (36 total)

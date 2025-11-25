@@ -33,6 +33,19 @@
     stroke-width: 1px;
   }
 
+  .park-path {
+    fill: rgba(59, 130, 246, 0.35); /* translucent indigo */
+    stroke: #1d4ed8;
+    stroke-width: 1.2px;
+    cursor: pointer;
+    transition: fill 0.3s ease, stroke-width 0.3s ease;
+  }
+
+  .park-path:hover {
+    fill: rgba(59, 130, 246, 0.55);
+    stroke-width: 1.5px;
+  }
+
   /* Custom class for the active/clicked path (Vibrant Emerald) */
   .country-highlight {
     fill: #10b981 !important; /* Tailwind emerald-500 */

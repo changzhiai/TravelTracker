@@ -9,7 +9,7 @@ import logoImage from '/logo_tt.png';
 import './App.css';
 
 // Type definitions
-type Scope = 'world' | 'usa' | 'europe' | 'china' | 'india';
+type Scope = 'world' | 'usa' | 'usaParks' | 'europe' | 'china' | 'india';
 type NotificationType = 'success' | 'error';
 
 interface GeoFeature extends Feature {
@@ -30,6 +30,7 @@ interface TopoData extends Topology {
 // Note: Different datasets have different counts. UN recognizes 195 countries total.
 const WORLD_GEOJSON_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
 const USA_STATES_URL = 'https://unpkg.com/us-atlas@3.0.0/states-10m.json';
+const NATIONAL_PARKS_GEOJSON_URL = 'public/data/geojson/national-parks.geojson';
 const CHINA_PROVINCES_URL = 'https://raw.githubusercontent.com/junwang23/geoCN/refs/heads/master/geojson/china_provinces.json';
 const EUROPE_TOPJSON_URL = 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/refs/heads/master/TopoJSON/europe.topojson';
 const INDIA_STATES_URL = 'https://raw.githubusercontent.com/adarshbiradar/maps-geojson/refs/heads/master/india.json';
@@ -44,6 +45,7 @@ function App() {
   const [showListOnMobile, setShowListOnMobile] = useState(false);
   const [worldCountryFeatures, setWorldCountryFeatures] = useState<GeoFeature[]>([]);
   const [usStateFeatures, setUsStateFeatures] = useState<GeoFeature[]>([]);
+  const [usNationalParkFeatures, setUsNationalParkFeatures] = useState<GeoFeature[]>([]);
   const [europeCountryFeatures, setEuropeCountryFeatures] = useState<GeoFeature[]>([]);
   const [chinaProvinceFeatures, setChinaProvinceFeatures] = useState<GeoFeature[]>([]);
   const [indiaStateFeatures, setIndiaStateFeatures] = useState<GeoFeature[]>([]);
@@ -54,6 +56,7 @@ function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const mapGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const labelGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
+  const parkGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const pathRef = useRef<d3.GeoPath | null>(null);
   const currentProjectionRef = useRef<d3.GeoProjection | null>(null);
@@ -64,13 +67,19 @@ function App() {
   const currentFeatures = 
     currentScope === 'world' ? worldCountryFeatures :
     currentScope === 'usa' ? usStateFeatures :
+    currentScope === 'usaParks' ? usStateFeatures :
     currentScope === 'europe' ? europeCountryFeatures :
     currentScope === 'china' ? chinaProvinceFeatures :
     indiaStateFeatures;
+
+  const selectableFeatures = currentScope === 'usaParks'
+    ? usNationalParkFeatures
+    : currentFeatures;
   
   const locationTypeLabel = 
     currentScope === 'world' ? 'Countries' :
     currentScope === 'usa' ? 'States' :
+    currentScope === 'usaParks' ? 'National Parks' :
     currentScope === 'europe' ? 'Countries' :
     currentScope === 'china' ? 'Provinces' :
     'States';
@@ -78,6 +87,7 @@ function App() {
   const totalTypeLabel = 
     currentScope === 'world' ? '% World' :
     currentScope === 'usa' ? '% USA' :
+    currentScope === 'usaParks' ? '% Parks' :
     currentScope === 'europe' ? '% Europe' :
     currentScope === 'china' ? '% China' :
     '% India';
@@ -85,6 +95,7 @@ function App() {
   const mapTitle = 
     currentScope === 'world' ? 'World Map' :
     currentScope === 'usa' ? 'USA Map' :
+    currentScope === 'usaParks' ? 'US National Parks Map' :
     currentScope === 'europe' ? 'Europe Map' :
     currentScope === 'china' ? 'China Map' :
     'India Map';
@@ -92,6 +103,7 @@ function App() {
   const listTitle = 
     currentScope === 'world' ? 'Countries List' :
     currentScope === 'usa' ? 'States List' :
+    currentScope === 'usaParks' ? 'National Parks List' :
     currentScope === 'europe' ? 'Countries List' :
     currentScope === 'china' ? 'Provinces List' :
     'States List';
@@ -100,6 +112,7 @@ function App() {
   const totalReference = 
     currentScope === 'world' ? worldCountryFeatures.length :
     currentScope === 'usa' ? usStateFeatures.length :
+    currentScope === 'usaParks' ? usNationalParkFeatures.length :
     currentScope === 'europe' ? europeCountryFeatures.length :
     currentScope === 'china' ? chinaProvinceFeatures.length :
     indiaStateFeatures.length;
@@ -224,6 +237,33 @@ function App() {
       setUsStateFeatures([]);
     }
   }, [usStateFeatures.length, showNotification]);
+
+  const loadNationalParksData = useCallback(async () => {
+    if (usNationalParkFeatures.length > 0) return;
+
+    try {
+      const geoJsonData = await d3.json<FeatureCollection>(NATIONAL_PARKS_GEOJSON_URL);
+      if (!geoJsonData) throw new Error('Failed to load US national parks data');
+
+      const features = (geoJsonData.features as GeoFeature[])
+        .filter(d => d.properties && d.properties.name && d.geometry)
+        .map(feature => ({
+          ...feature,
+          properties: {
+            ...feature.properties,
+            name: String(feature.properties?.name ?? 'Unknown Park')
+          }
+        })) as GeoFeature[];
+
+      setUsNationalParkFeatures(features);
+      console.log(`US National Parks data loaded successfully. Found ${features.length} parks.`);
+    } catch (error) {
+      console.error('Error loading US national parks data:', error);
+      showNotification('Failed to load US national parks data. Check the console.', 'error');
+      setUsNationalParkFeatures([]);
+    }
+  }, [usNationalParkFeatures.length, showNotification]);
+
 
   // Load Europe data from TopoJSON
   const loadEuropeData = useCallback(async () => {
@@ -521,12 +561,33 @@ function App() {
         mapGroupRef.current!.selectAll<SVGPathElement, GeoFeature>(".country-path")
           .attr("d", (d: GeoFeature) => pathRef.current!(d));
       }
+      if (currentScope === 'usaParks' && parkGroupRef.current && pathRef.current) {
+        parkGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".park-path")
+          .attr("d", (d: GeoFeature) => pathRef.current!(d));
+      }
 
       if (showLabelsRef.current) {
         renderLabels();
       }
     }, 50);
-  }, [currentFeatures, updateSvgDimensionsAndFit]);
+  }, [currentFeatures, currentScope, updateSvgDimensionsAndFit]);
+
+  const updatePathHighlights = useCallback((names: string[], highlight: boolean) => {
+    const targetGroups = currentScope === 'usaParks'
+      ? [mapGroupRef.current, parkGroupRef.current]
+      : [mapGroupRef.current];
+
+    names.forEach(name => {
+      const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+      targetGroups.forEach(group => {
+        if (!group) return;
+        const path = group.select<SVGPathElement>(`path[data-name="${normalizedName}"]`);
+        if (!path.empty()) {
+          path.classed('country-highlight', highlight);
+        }
+      });
+    });
+  }, [currentScope]);
 
   // Render labels
   const renderLabels = useCallback(() => {
@@ -534,7 +595,7 @@ function App() {
 
     if (showLabelsRef.current) {
       // Get currently selected locations
-      const selectedFeatures = currentFeatures.filter(d => 
+      const selectedFeatures = selectableFeatures.filter(d => 
         activeLocationsRef.current.has(d.properties.name)
       );
 
@@ -572,7 +633,7 @@ function App() {
         .attr("opacity", 0)
         .remove();
     }
-  }, [currentFeatures]);
+  }, [selectableFeatures]);
 
   // Handle location toggle - optimized to prevent re-renders
   const handleLocationToggle = useCallback((locationName: string) => {
@@ -582,13 +643,18 @@ function App() {
     const normalizedName = locationName.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
     
     // Update DOM directly first (immediate visual feedback) - no React re-render
-    if (mapGroupRef.current) {
-      const pathElement = mapGroupRef.current.select(`path[data-name="${normalizedName}"]`);
+    const targetGroups = currentScope === 'usaParks'
+      ? [parkGroupRef.current]
+      : [mapGroupRef.current];
+
+    targetGroups.forEach(group => {
+      if (!group) return;
+      const pathElement = group.select<SVGPathElement>(`path[data-name="${normalizedName}"]`);
       if (!pathElement.empty()) {
         const isCurrentlySelected = pathElement.classed('country-highlight');
         pathElement.classed('country-highlight', !isCurrentlySelected);
       }
-    }
+    });
     
     const listItem = d3.select(`#list-${normalizedName}`);
     if (!listItem.empty()) {
@@ -615,7 +681,7 @@ function App() {
         
         // Update labels if needed (only if labels are shown)
         if (showLabels && labelGroupRef.current && pathRef.current) {
-          const selectedFeatures = currentFeatures.filter(d => newSet.has(d.properties.name));
+        const selectedFeatures = selectableFeatures.filter(d => newSet.has(d.properties.name));
           
           labelGroupRef.current.selectAll<SVGTextElement, GeoFeature>(".map-label")
             .data(selectedFeatures, (d: GeoFeature) => d.properties.name)
@@ -645,7 +711,7 @@ function App() {
         setTimeout(() => renderLabels(), 0);
       }
     }, 0); // Use setTimeout instead of requestAnimationFrame to batch better
-  }, [currentFeatures, showLocationName]);
+  }, [selectableFeatures, currentScope, showLocationName]);
 
 
   // Handle scope selection
@@ -658,8 +724,11 @@ function App() {
     setIsLoading(true);
     
     // Load data based on scope
-    if (scope === 'usa') {
+    if (scope === 'usa' || scope === 'usaParks') {
       await loadUSAData();
+      if (scope === 'usaParks') {
+        await loadNationalParksData();
+      }
     } else if (scope === 'europe') {
       await loadEuropeData();
     } else if (scope === 'china') {
@@ -672,7 +741,7 @@ function App() {
 
     // Update scope - the useEffect will handle all rendering with proper transform
     setCurrentScope(scope);
-  }, [currentScope, loadUSAData, loadEuropeData, loadChinaData, loadIndiaData]);
+  }, [currentScope, loadUSAData, loadNationalParksData, loadEuropeData, loadChinaData, loadIndiaData]);
 
   // Save map as PNG
   const saveMapAsPNG = useCallback(() => {
@@ -875,9 +944,11 @@ function App() {
     svgRef.current = svg.node();
 
     const mapGroup = svg.append("g").attr("id", "map-group");
+    const parkGroup = svg.append("g").attr("id", "park-group");
     const labelGroup = svg.append("g").attr("id", "label-group");
 
     mapGroupRef.current = mapGroup;
+    parkGroupRef.current = parkGroup;
     labelGroupRef.current = labelGroup;
 
     // Set up projections
@@ -920,8 +991,13 @@ function App() {
         // Skip zoom event handling during scope updates to prevent visible jump
         if (isUpdatingScopeRef.current) return;
         
-        if (mapGroupRef.current && labelGroupRef.current) {
+        if (mapGroupRef.current) {
           mapGroupRef.current.attr("transform", event.transform);
+        }
+        if (parkGroupRef.current) {
+          parkGroupRef.current.attr("transform", event.transform);
+        }
+        if (labelGroupRef.current) {
           labelGroupRef.current.attr("transform", event.transform);
         }
       })
@@ -986,6 +1062,10 @@ function App() {
           mapGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".country-path")
             .attr("d", (d: GeoFeature) => pathRef.current!(d));
         }
+        if (currentScopeRef.current === 'usaParks' && parkGroupRef.current && pathRef.current) {
+          parkGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".park-path")
+            .attr("d", (d: GeoFeature) => pathRef.current!(d));
+        }
         if (svgRef.current && zoomRef.current) {
           const svg = d3.select(svgRef.current);
           svg.call(zoomRef.current.transform, d3.zoomTransform(svgRef.current));
@@ -1005,6 +1085,7 @@ function App() {
   // Store latest values in refs to avoid re-renders
   const activeLocationsRef = useRef<Set<string>>(new Set());
   const showLabelsRef = useRef(false);
+  const currentScopeRef = useRef<Scope>(currentScope);
   
   // Keep refs in sync with state (but don't trigger re-renders)
   useEffect(() => {
@@ -1022,6 +1103,10 @@ function App() {
       renderLabels();
     }
   }, [showLabels, renderLabels]);
+
+  useEffect(() => {
+    currentScopeRef.current = currentScope;
+  }, [currentScope]);
 
   // Update map when scope or features change (NOT on clicks)
   useEffect(() => {
@@ -1045,6 +1130,9 @@ function App() {
         if (mapGroupRef.current) {
           mapGroupRef.current.selectAll('.country-path').remove();
         }
+        if (parkGroupRef.current) {
+          parkGroupRef.current.selectAll('.park-path').remove();
+        }
         if (labelGroupRef.current) {
           labelGroupRef.current.selectAll('.map-label').remove();
         }
@@ -1060,6 +1148,7 @@ function App() {
         const projection = 
           currentScope === 'world' ? worldProjection :
           currentScope === 'usa' ? usaProjection :
+          currentScope === 'usaParks' ? usaProjection :
           currentScope === 'europe' ? europeProjection :
           currentScope === 'china' ? chinaProjection :
           indiaProjection;
@@ -1151,6 +1240,9 @@ function App() {
             if (mapGroupRef.current) {
               mapGroupRef.current.attr("transform", initialTransformRef.current.toString());
             }
+            if (parkGroupRef.current) {
+              parkGroupRef.current.attr("transform", initialTransformRef.current.toString());
+            }
             if (labelGroupRef.current) {
               labelGroupRef.current.attr("transform", initialTransformRef.current.toString());
             }
@@ -1172,24 +1264,56 @@ function App() {
               }
               return pathData || '';
             })
-            .on("click", function(event: MouseEvent, d: GeoFeature) {
-              event.preventDefault();
-              event.stopPropagation();
-              event.stopImmediatePropagation();
-              if (event.type === "mousemove") return;
-              if (!d.properties.name) return;
-              handleLocationToggle(d.properties.name);
-            })
-            .on("mousedown", function(event: MouseEvent) {
-              event.stopPropagation();
-            })
-            .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
+            .classed('country-highlight', (d: GeoFeature) => currentScope !== 'usaParks' && activeLocationsRef.current.has(d.properties.name));
+
+          if (currentScope === 'usaParks') {
+            joined
+              .on("click", null)
+              .on("mousedown", null)
+              .style("pointer-events", 'none');
+          } else {
+            joined
+              .on("click", function(event: MouseEvent, d: GeoFeature) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                if (event.type === "mousemove") return;
+                if (!d.properties.name) return;
+                handleLocationToggle(d.properties.name);
+              })
+              .on("mousedown", function(event: MouseEvent) {
+                event.stopPropagation();
+              })
+              .style("pointer-events", 'auto');
+          }
           
           console.log(`Rendered ${joined.size()} paths for ${currentScope}`);
           if (currentScope === 'china' && joined.size() === 0) {
             console.error('No paths rendered for China! Features:', currentFeatures.length);
           }
           
+          if (currentScope === 'usaParks' && parkGroupRef.current && pathRef.current) {
+            const parkPaths = parkGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".park-path")
+              .data(usNationalParkFeatures, (d: GeoFeature) => d.properties.name);
+
+            parkPaths.join("path")
+              .attr("class", "park-path")
+              .attr("data-name", (d: GeoFeature) => d.properties.name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, ''))
+              .attr("d", (d: GeoFeature) => pathRef.current!(d) || '')
+              .on("click", function(event: MouseEvent, d: GeoFeature) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                if (event.type === "mousemove") return;
+                if (!d.properties.name) return;
+                handleLocationToggle(d.properties.name);
+              })
+              .on("mousedown", function(event: MouseEvent) {
+                event.stopPropagation();
+              })
+              .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
+          }
+
           if (showLabelsRef.current) {
             renderLabels();
           }
@@ -1209,11 +1333,14 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentScope, currentFeatures.length]);
 
-  // Filter locations based on search
-  const filteredLocations = currentFeatures
+  const listItems: string[] = selectableFeatures
     .map(d => d.properties.name)
-    .filter(name => name)
+    .filter((name): name is string => Boolean(name));
+
+  // Filter locations based on search
+  const filteredLocations = listItems
     .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .slice()
     .sort();
 
   return (
@@ -1241,6 +1368,7 @@ function App() {
               <option value="europe">🇪🇺 Europe</option>
               <option value="china">🇨🇳 China</option>
               <option value="india">🇮🇳 India</option>
+              <option value="usaParks">🏞️ US NPs</option>
             </select>
           </div>
 
@@ -1317,18 +1445,12 @@ function App() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => {
-                    const allLocationNames = currentFeatures
-                      .map(d => d.properties.name)
-                      .filter(name => name);
+                    const allLocationNames = listItems;
                     
                     if (activeLocations.size === allLocationNames.length) {
                       // Deselect all
                       setActiveLocations(new Set());
-                      // Update DOM directly
-                      if (mapGroupRef.current) {
-                        mapGroupRef.current.selectAll('.country-path')
-                          .classed('country-highlight', false);
-                      }
+                      updatePathHighlights(allLocationNames, false);
                       // Update list items
                       allLocationNames.forEach(name => {
                         const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
@@ -1344,11 +1466,7 @@ function App() {
                     } else {
                       // Select all
                       setActiveLocations(new Set(allLocationNames));
-                      // Update DOM directly
-                      if (mapGroupRef.current) {
-                        mapGroupRef.current.selectAll('.country-path')
-                          .classed('country-highlight', true);
-                      }
+                      updatePathHighlights(allLocationNames, true);
                       // Update list items
                       allLocationNames.forEach(name => {
                         const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
@@ -1364,7 +1482,7 @@ function App() {
                     }
                   }}
                   className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
-                    activeLocations.size === currentFeatures.filter(d => d.properties.name).length && activeLocations.size > 0
+                    activeLocations.size === listItems.length && activeLocations.size > 0
                       ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600' 
                       : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                   }`}
