@@ -87,12 +87,6 @@ function App() {
     currentScope === 'europe' ? 'Countries List' :
     'Provinces List';
   
-  const scopeLabel = 
-    currentScope === 'world' ? 'Tracking global adventures (Countries)' :
-    currentScope === 'usa' ? 'Tracking US adventures (States)' :
-    currentScope === 'europe' ? 'Tracking European adventures (Countries)' :
-    'Tracking Chinese adventures (Provinces)';
-  
   const locationsCount = activeLocations.size;
   const totalReference = currentScope === 'world' 
     ? worldCountryFeatures.length 
@@ -100,6 +94,41 @@ function App() {
   const percentage = totalReference > 0 
     ? ((locationsCount / totalReference) * 100).toFixed(1) 
     : '0.0';
+
+  // Show location name notification
+  const showLocationName = useCallback((locationName: string) => {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    // Remove any existing notifications
+    container.innerHTML = '';
+
+    const notification = document.createElement('div');
+    notification.className = 'location-name-notification bg-white/95 backdrop-blur-md shadow-2xl rounded-xl px-6 py-4 border border-white/20';
+    notification.innerHTML = `
+      <div class="flex items-center space-x-3">
+        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        </svg>
+        <span class="text-lg font-bold text-gray-800">${locationName}</span>
+      </div>
+    `;
+
+    container.appendChild(notification);
+
+    // Auto-remove after 2 seconds with fade out
+    setTimeout(() => {
+      notification.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+      notification.style.opacity = '0';
+      notification.style.transform = 'translateX(-100px)';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 500);
+    }, 2000);
+  }, []);
 
   // Notification system
   const showNotification = useCallback((message: string, type: NotificationType = 'success') => {
@@ -404,6 +433,9 @@ function App() {
 
   // Handle location toggle - optimized to prevent re-renders
   const handleLocationToggle = useCallback((locationName: string) => {
+    // Show location name notification
+    showLocationName(locationName);
+    
     const normalizedName = locationName.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
     
     // Update DOM directly first (immediate visual feedback) - no React re-render
@@ -470,7 +502,7 @@ function App() {
         setTimeout(() => renderLabels(), 0);
       }
     }, 0); // Use setTimeout instead of requestAnimationFrame to batch better
-  }, [currentFeatures]);
+  }, [currentFeatures, showLocationName]);
 
 
   // Handle scope selection
@@ -1019,8 +1051,8 @@ function App() {
   return (
     <div className="p-4 min-h-screen">
       {/* Header */}
-      <header className="flex justify-between items-center py-4 px-6 mb-6 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20">
-        <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 px-4 sm:px-6 mb-4 sm:mb-6 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0">
+        <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-2">
             <img 
               src={logoImage} 
@@ -1030,30 +1062,31 @@ function App() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
           </div>
 
-          <div className="relative w-24 sm:w-28">
+          <div className="relative w-28 sm:w-32">
             <select
               value={currentScope}
               onChange={(e) => handleScopeSelection(e.target.value as Scope)}
-              className="custom-select block w-full text-sm py-2 px-4 border-2 border-indigo-200 bg-white/90 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 font-medium transition-all hover:border-indigo-300 hover:shadow-lg"
+              className="custom-select block w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 relative z-10"
             >
-              <option value="world">World</option>
-              <option value="usa">USA</option>
-              <option value="europe">Europe</option>
-              <option value="china">China</option>
+              <option value="world">🌍 World</option>
+              <option value="usa">🇺🇸 USA</option>
+              <option value="europe">🇪🇺 Europe</option>
+              <option value="china">🇨🇳 China</option>
             </select>
           </div>
 
-          <p className="text-sm text-gray-500 hidden lg:block">{scopeLabel}</p>
         </div>
 
-        <div className="flex items-center space-x-4 text-sm font-medium hidden sm:flex">
-          <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200">
-            <span className="text-2xl font-extrabold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">{locationsCount}</span>
-            <span className="text-amber-700 font-semibold">{locationTypeLabel}</span>
+        <div className="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm font-medium">
+          <div className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg sm:rounded-xl border border-amber-200">
+            <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">{locationsCount}</span>
+            <span className="text-amber-700 font-semibold hidden sm:inline">{locationTypeLabel}</span>
           </div>
-          <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
-            <span className="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{percentage}</span>
-            <span className="text-indigo-700 font-semibold">{totalTypeLabel}</span>
+          <div className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg sm:rounded-xl border border-indigo-200">
+            <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              {percentage}%
+            </span>
+            <span className="text-indigo-700 font-semibold hidden sm:inline">{totalTypeLabel.replace('%', '')}</span>
           </div>
         </div>
       </header>
@@ -1271,7 +1304,7 @@ function App() {
       </div>
 
       {/* Notification Container */}
-      <div id="notification-container" className="fixed bottom-4 right-4 z-50"></div>
+      <div id="notification-container" className="fixed bottom-4 left-4 z-50"></div>
     </div>
   );
 }
