@@ -7,7 +7,7 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 import './App.css';
 
 // Type definitions
-type Scope = 'world' | 'usa';
+type Scope = 'world' | 'usa' | 'europe' | 'china';
 type NotificationType = 'success' | 'error';
 
 interface GeoFeature extends Feature {
@@ -28,6 +28,8 @@ interface TopoData extends Topology {
 // Note: Different datasets have different counts. UN recognizes 195 countries total.
 const WORLD_GEOJSON_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
 const USA_STATES_URL = 'https://unpkg.com/us-atlas@3.0.0/states-10m.json';
+const CHINA_PROVINCES_URL = 'https://raw.githubusercontent.com/junwang23/geoCN/refs/heads/master/geojson/china_provinces.json';
+const EUROPE_TOPJSON_URL = 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/refs/heads/master/TopoJSON/europe.topojson';
 
 function App() {
   // State management
@@ -38,6 +40,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [worldCountryFeatures, setWorldCountryFeatures] = useState<GeoFeature[]>([]);
   const [usStateFeatures, setUsStateFeatures] = useState<GeoFeature[]>([]);
+  const [europeCountryFeatures, setEuropeCountryFeatures] = useState<GeoFeature[]>([]);
+  const [chinaProvinceFeatures, setChinaProvinceFeatures] = useState<GeoFeature[]>([]);
 
   // Refs for D3.js
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -52,14 +56,41 @@ function App() {
   const isUpdatingScopeRef = useRef(false);
 
   // Computed values
-  const currentFeatures = currentScope === 'world' ? worldCountryFeatures : usStateFeatures;
-  const locationTypeLabel = currentScope === 'world' ? 'Countries' : 'States';
-  const totalTypeLabel = currentScope === 'world' ? '% World' : '% USA';
-  const mapTitle = currentScope === 'world' ? 'World Map' : 'USA Map';
-  const listTitle = currentScope === 'world' ? 'Countries List' : 'States List';
-  const scopeLabel = currentScope === 'world' 
-    ? 'Tracking global adventures (Countries)' 
-    : 'Tracking US adventures (States)';
+  const currentFeatures = 
+    currentScope === 'world' ? worldCountryFeatures :
+    currentScope === 'usa' ? usStateFeatures :
+    currentScope === 'europe' ? europeCountryFeatures :
+    chinaProvinceFeatures;
+  
+  const locationTypeLabel = 
+    currentScope === 'world' ? 'Countries' :
+    currentScope === 'usa' ? 'States' :
+    currentScope === 'europe' ? 'Countries' :
+    'Provinces';
+  
+  const totalTypeLabel = 
+    currentScope === 'world' ? '% World' :
+    currentScope === 'usa' ? '% USA' :
+    currentScope === 'europe' ? '% Europe' :
+    '% China';
+  
+  const mapTitle = 
+    currentScope === 'world' ? 'World Map' :
+    currentScope === 'usa' ? 'USA Map' :
+    currentScope === 'europe' ? 'Europe Map' :
+    'China Map';
+  
+  const listTitle = 
+    currentScope === 'world' ? 'Countries List' :
+    currentScope === 'usa' ? 'States List' :
+    currentScope === 'europe' ? 'Countries List' :
+    'Provinces List';
+  
+  const scopeLabel = 
+    currentScope === 'world' ? 'Tracking global adventures (Countries)' :
+    currentScope === 'usa' ? 'Tracking US adventures (States)' :
+    currentScope === 'europe' ? 'Tracking European adventures (Countries)' :
+    'Tracking Chinese adventures (Provinces)';
   
   const locationsCount = activeLocations.size;
   const totalReference = currentScope === 'world' 
@@ -151,6 +182,103 @@ function App() {
       setUsStateFeatures([]);
     }
   }, [usStateFeatures.length, showNotification]);
+
+  // Load Europe data from TopoJSON
+  const loadEuropeData = useCallback(async () => {
+    if (europeCountryFeatures.length > 0) return;
+
+    try {
+      console.log('Loading Europe data from:', EUROPE_TOPJSON_URL);
+      const topoData = await d3.json<Topology>(EUROPE_TOPJSON_URL);
+      if (!topoData) throw new Error('Failed to load Europe TopoJSON data');
+      
+      console.log('TopoJSON data loaded, objects:', Object.keys(topoData.objects));
+      
+      // Convert TopoJSON to GeoJSON
+      const europeObject = topoData.objects.europe as GeometryCollection;
+      if (!europeObject) throw new Error('Europe object not found in TopoJSON');
+      
+      const geoJsonData = feature(topoData, europeObject);
+      if (!geoJsonData || !geoJsonData.features) throw new Error('Failed to convert TopoJSON to GeoJSON');
+      
+      console.log('Converted to GeoJSON, total features:', geoJsonData.features.length);
+      
+      // Process the features - ensure name property exists
+      const features = (geoJsonData.features as GeoFeature[])
+        .filter(d => {
+          if (!d.properties) return false;
+          if (!d.geometry) return false;
+          return true;
+        })
+        .map(feature => {
+          const props = feature.properties;
+          // The TopoJSON uses "NAME" property, ensure we have "name"
+          if (!props.name && props.NAME) {
+            props.name = String(props.NAME);
+          }
+          if (!props.name || typeof props.name !== 'string') {
+            props.name = String(props.name || props.NAME || 'Unknown');
+          }
+          return feature as GeoFeature;
+        });
+      
+      console.log(`Europe map data loaded successfully. Found ${features.length} countries.`);
+      if (features.length > 0) {
+        console.log('Sample country:', features[0].properties.name);
+        console.log('Sample geometry type:', features[0].geometry.type);
+      }
+      
+      setEuropeCountryFeatures(features);
+    } catch (error) {
+      console.error("Error loading Europe map data:", error);
+      showNotification("Failed to load Europe map data. Check the console.", 'error');
+      setEuropeCountryFeatures([]);
+    }
+  }, [showNotification]);
+
+  // Load China provinces data
+  const loadChinaData = useCallback(async () => {
+    if (chinaProvinceFeatures.length > 0) return;
+
+    try {
+      console.log('Loading China provinces data from:', CHINA_PROVINCES_URL);
+      const geoJsonData = await d3.json<FeatureCollection>(CHINA_PROVINCES_URL);
+      if (!geoJsonData) throw new Error('Failed to load China provinces data');
+      
+      console.log('Raw data loaded, total features:', geoJsonData.features.length);
+      
+      // Process the features - this data source already has English names
+      const features = (geoJsonData.features as GeoFeature[])
+        .filter(d => {
+          if (!d.properties || !d.properties.name) return false;
+          // Filter out any invalid features - check if geometry exists and has valid type
+          if (!d.geometry) return false;
+          const geom = d.geometry;
+          if (geom.type === 'GeometryCollection') return false; // Skip geometry collections
+          return true;
+        })
+        .map(feature => {
+          const props = feature.properties;
+          // Ensure name property exists (this data source already has English names)
+          if (!props.name || typeof props.name !== 'string') {
+            props.name = String(props.name || 'Unknown');
+          }
+          return feature as GeoFeature;
+        });
+      
+      console.log(`China provinces map data loaded successfully. Found ${features.length} provinces.`);
+      if (features.length > 0) {
+        console.log('Sample province:', features[0].properties.name);
+        console.log('Sample geometry type:', features[0].geometry.type);
+      }
+      
+      setChinaProvinceFeatures(features);
+    } catch (error) {
+      console.error("Error loading China provinces map data:", error);
+      showNotification("Failed to load China provinces map data. Check the console.", 'error');
+      setChinaProvinceFeatures([]);
+    }
+  }, [showNotification]);
 
   // Update SVG dimensions
   const updateSvgDimensions = useCallback(() => {
@@ -351,16 +479,22 @@ function App() {
     // Clear active locations
     setActiveLocations(new Set());
     
-    // Load USA data if switching to USA
+    setIsLoading(true);
+    
+    // Load data based on scope
     if (scope === 'usa') {
-      setIsLoading(true);
       await loadUSAData();
-      setIsLoading(false);
+    } else if (scope === 'europe') {
+      await loadEuropeData();
+    } else if (scope === 'china') {
+      await loadChinaData();
     }
+    
+    setIsLoading(false);
 
     // Update scope - the useEffect will handle all rendering with proper transform
     setCurrentScope(scope);
-  }, [currentScope, loadUSAData]);
+  }, [currentScope, loadUSAData, loadEuropeData, loadChinaData]);
 
   // Save map as PNG
   const saveMapAsPNG = useCallback(() => {
@@ -739,7 +873,15 @@ function App() {
         
         const worldProjection = geoMiller();
         const usaProjection = d3.geoAlbersUsa();
-        const projection = currentScope === 'world' ? worldProjection : usaProjection;
+        const europeProjection = d3.geoMercator().center([15, 55]).scale(800);
+        // For China, use Mercator projection - will be fitted to bounds
+        const chinaProjection = d3.geoMercator();
+        
+        const projection = 
+          currentScope === 'world' ? worldProjection :
+          currentScope === 'usa' ? usaProjection :
+          currentScope === 'europe' ? europeProjection :
+          chinaProjection;
         currentProjectionRef.current = projection;
 
         const path = d3.geoPath().projection(projection);
@@ -747,21 +889,53 @@ function App() {
 
         // Calculate and apply transform FIRST (before rendering) to prevent jump
         const dims = updateSvgDimensions();
-        if (dims.width > 0 && dims.height > 0 && pathRef.current) {
+        console.log(`Rendering ${currentScope} map with ${currentFeatures.length} features, dimensions:`, dims);
+        if (dims.width > 0 && dims.height > 0 && pathRef.current && currentFeatures.length > 0) {
           const featureCollection: FeatureCollection = {
             type: "FeatureCollection",
             features: currentFeatures
           };
           
           // Fit projection to features
-          projection.fitSize([dims.width, dims.height], featureCollection);
+          try {
+            if (currentScope === 'china') {
+              // Calculate geographic bounds
+              const bounds = d3.geoBounds(featureCollection);
+              console.log('China geographic bounds:', bounds);
+              
+              // Use fitSize with some padding
+              const padding = 60;
+              projection.fitSize([dims.width - padding * 2, dims.height - padding * 2], featureCollection);
+              
+              // Get current translate and adjust for padding
+              const currentTranslate = projection.translate();
+              projection.translate([currentTranslate[0] + padding, currentTranslate[1] + padding]);
+              
+              console.log('China projection after fit:', {
+                center: projection.center(),
+                scale: projection.scale(),
+                translate: projection.translate()
+              });
+            } else {
+              projection.fitSize([dims.width, dims.height], featureCollection);
+            }
+          } catch (error) {
+            console.error('Error fitting projection:', error);
+            // Fallback: use default center and scale
+            if (currentScope === 'china') {
+              (projection as d3.GeoProjection).center([105, 35]).scale(1000);
+              console.log('Using fallback projection for China');
+            }
+          }
           
           // Calculate initial transform
           const [[x0, y0], [x1, y1]] = pathRef.current.bounds(featureCollection);
+          console.log(`Bounds for ${currentScope}:`, { x0, y0, x1, y1 });
           if (x0 !== Infinity && x1 !== -Infinity && y0 !== Infinity && y1 !== -Infinity) {
             const scale = Math.min(dims.width / (x1 - x0), dims.height / (y1 - y0));
             const translateX = (dims.width - scale * (x0 + x1)) / 2;
             const translateY = (dims.height - scale * (y0 + y1)) / 2;
+            console.log(`Transform for ${currentScope}:`, { scale, translateX, translateY });
             initialTransformRef.current = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
             
             // Reset zoom state completely first
@@ -787,10 +961,16 @@ function App() {
           const paths = mapGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".country-path")
             .data(currentFeatures, (d: GeoFeature) => d.properties.name);
 
-          paths.join("path")
+          const joined = paths.join("path")
             .attr("class", "country-path")
             .attr("data-name", (d: GeoFeature) => d.properties.name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, ''))
-            .attr("d", (d: GeoFeature) => pathRef.current!(d))
+            .attr("d", (d: GeoFeature) => {
+              const pathData = pathRef.current!(d);
+              if (!pathData && currentScope === 'china') {
+                console.warn('Null path data for:', d.properties.name, d.geometry.type);
+              }
+              return pathData || '';
+            })
             .on("click", function(event: MouseEvent, d: GeoFeature) {
               event.preventDefault();
               event.stopPropagation();
@@ -803,6 +983,11 @@ function App() {
               event.stopPropagation();
             })
             .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
+          
+          console.log(`Rendered ${joined.size()} paths for ${currentScope}`);
+          if (currentScope === 'china' && joined.size() === 0) {
+            console.error('No paths rendered for China! Features:', currentFeatures.length);
+          }
           
           if (showLabelsRef.current) {
             renderLabels();
@@ -850,6 +1035,8 @@ function App() {
             >
               <option value="world">World</option>
               <option value="usa">USA</option>
+              <option value="europe">Europe</option>
+              <option value="china">China</option>
             </select>
           </div>
 
