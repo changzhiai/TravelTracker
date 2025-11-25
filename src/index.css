@@ -42,7 +42,8 @@
   }
 
   .park-path:hover {
-    fill: rgba(59, 130, 246, 0.55);
+    fill: rgba(239, 68, 68, 0.6); /* Light red on hover */
+    stroke: #dc2626; /* Darker red stroke */
     stroke-width: 1.5px;
   }
 

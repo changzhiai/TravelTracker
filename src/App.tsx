@@ -57,6 +57,7 @@ function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const mapGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const labelGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
+  const hoverLabelGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const parkGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const pathRef = useRef<d3.GeoPath | null>(null);
@@ -636,6 +637,78 @@ function App() {
     }
   }, [selectableFeatures]);
 
+  const hoverLabelTimeoutRef = useRef<number | null>(null);
+  const currentHoverNameRef = useRef<string | null>(null);
+
+  // Show hover label for a location
+  const showHoverLabel = useCallback((locationName: string) => {
+    // Clear any pending hide timeout
+    if (hoverLabelTimeoutRef.current) {
+      clearTimeout(hoverLabelTimeoutRef.current);
+      hoverLabelTimeoutRef.current = null;
+    }
+    
+    // If already showing the same label, don't recreate
+    if (currentHoverNameRef.current === locationName) return;
+    currentHoverNameRef.current = locationName;
+    
+    if (!hoverLabelGroupRef.current || !pathRef.current) return;
+    
+    // Find the feature by name
+    const feature = selectableFeatures.find(d => d.properties.name === locationName);
+    if (!feature) return;
+    
+    const centroid = pathRef.current.centroid(feature);
+    const [x, y] = centroid;
+    
+    hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+    
+    const label = hoverLabelGroupRef.current.append("text")
+      .attr("class", "hover-label")
+      .attr("x", x)
+      .attr("y", y)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "12px")
+      .attr("font-weight", "600")
+      .attr("fill", "#1f2937")
+      .attr("pointer-events", "none")
+      .style("opacity", 1)
+      .text(locationName);
+    
+    const bbox = (label.node() as SVGTextElement)?.getBBox();
+    if (bbox) {
+      const padding = 4;
+      hoverLabelGroupRef.current.insert("rect", "text")
+        .attr("class", "hover-label-bg")
+        .attr("x", bbox.x - padding)
+        .attr("y", bbox.y - padding)
+        .attr("width", bbox.width + padding * 2)
+        .attr("height", bbox.height + padding * 2)
+        .attr("fill", "rgba(255, 255, 255, 0.95)")
+        .attr("stroke", "#e5e7eb")
+        .attr("stroke-width", "1")
+        .attr("rx", "4")
+        .attr("pointer-events", "none")
+        .style("opacity", 1);
+    }
+  }, [selectableFeatures]);
+
+  // Hide hover label
+  const hideHoverLabel = useCallback(() => {
+    // Clear any pending show
+    if (hoverLabelTimeoutRef.current) {
+      clearTimeout(hoverLabelTimeoutRef.current);
+    }
+    
+    // Add small delay to prevent flickering when moving between items
+    hoverLabelTimeoutRef.current = setTimeout(() => {
+      if (!hoverLabelGroupRef.current) return;
+      currentHoverNameRef.current = null;
+      hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+      hoverLabelTimeoutRef.current = null;
+    }, 50);
+  }, []);
+
   // Handle location toggle - optimized to prevent re-renders
   const handleLocationToggle = useCallback((locationName: string) => {
     // Show location name notification
@@ -947,10 +1020,12 @@ function App() {
     const mapGroup = svg.append("g").attr("id", "map-group");
     const parkGroup = svg.append("g").attr("id", "park-group");
     const labelGroup = svg.append("g").attr("id", "label-group");
+    const hoverLabelGroup = svg.append("g").attr("id", "hover-label-group");
 
     mapGroupRef.current = mapGroup;
     parkGroupRef.current = parkGroup;
     labelGroupRef.current = labelGroup;
+    hoverLabelGroupRef.current = hoverLabelGroup;
 
     // Set up projections
     const worldProjection = geoMiller();
@@ -1000,6 +1075,9 @@ function App() {
         }
         if (labelGroupRef.current) {
           labelGroupRef.current.attr("transform", event.transform);
+        }
+        if (hoverLabelGroupRef.current) {
+          hoverLabelGroupRef.current.attr("transform", event.transform);
         }
       })
       .wheelDelta((event) => {
@@ -1137,6 +1215,14 @@ function App() {
         if (labelGroupRef.current) {
           labelGroupRef.current.selectAll('.map-label').remove();
         }
+        if (hoverLabelGroupRef.current) {
+          hoverLabelGroupRef.current.selectAll('.hover-label, .hover-label-bg').remove();
+        }
+        if (hoverLabelTimeoutRef.current) {
+          clearTimeout(hoverLabelTimeoutRef.current);
+          hoverLabelTimeoutRef.current = null;
+        }
+        currentHoverNameRef.current = null;
         
         const worldProjection = geoMiller();
         const usaProjection = d3.geoAlbersUsa();
@@ -1247,6 +1333,9 @@ function App() {
             if (labelGroupRef.current) {
               labelGroupRef.current.attr("transform", initialTransformRef.current.toString());
             }
+            if (hoverLabelGroupRef.current) {
+              hoverLabelGroupRef.current.attr("transform", initialTransformRef.current.toString());
+            }
           }
         }
         
@@ -1285,6 +1374,12 @@ function App() {
               .on("mousedown", function(event: MouseEvent) {
                 event.stopPropagation();
               })
+              .on("mouseenter", function(_event: MouseEvent, d: GeoFeature) {
+                if (d.properties.name) {
+                  showHoverLabel(d.properties.name);
+                }
+              })
+              .on("mouseleave", hideHoverLabel)
               .style("pointer-events", 'auto');
           }
           
@@ -1312,6 +1407,12 @@ function App() {
               .on("mousedown", function(event: MouseEvent) {
                 event.stopPropagation();
               })
+              .on("mouseenter", function(_event: MouseEvent, d: GeoFeature) {
+                if (d.properties.name) {
+                  showHoverLabel(d.properties.name);
+                }
+              })
+              .on("mouseleave", hideHoverLabel)
               .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
           }
 
@@ -1345,9 +1446,9 @@ function App() {
     .sort();
 
   return (
-    <div className="py-4 min-h-screen">
+    <div className="h-screen flex flex-col py-4 md:px-4 overflow-hidden box-border">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 px-4 sm:px-6 mb-4 sm:mb-6 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 sm:mx-0">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
         <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-2">
             <img 
@@ -1390,7 +1491,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-100px)] space-x-4 relative pl-4 pr-0 sm:px-0">
+      <div className="flex flex-1 space-x-4 relative pl-4 pr-0 md:pl-0 min-h-0">
         {/* Map Container */}
         <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20">
           <div className="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-3">
@@ -1599,6 +1700,8 @@ function App() {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
+                  onMouseEnter={() => showHoverLabel(name)}
+                  onMouseLeave={hideHoverLabel}
                 >
                   <span>{name}</span>
                   <input
