@@ -30,7 +30,8 @@ interface TopoData extends Topology {
 // Note: Different datasets have different counts. UN recognizes 195 countries total.
 const WORLD_GEOJSON_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
 const USA_STATES_URL = 'https://unpkg.com/us-atlas@3.0.0/states-10m.json';
-const NATIONAL_PARKS_GEOJSON_URL = 'public/data/geojson/national-parks.geojson';
+const BASE_URL = import.meta.env.BASE_URL || '/';
+const NATIONAL_PARKS_GEOJSON_URL = `${BASE_URL}data/geojson/national-parks.geojson`;
 const CHINA_PROVINCES_URL = 'https://raw.githubusercontent.com/junwang23/geoCN/refs/heads/master/geojson/china_provinces.json';
 const EUROPE_TOPJSON_URL = 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/refs/heads/master/TopoJSON/europe.topojson';
 const INDIA_STATES_URL = 'https://raw.githubusercontent.com/adarshbiradar/maps-geojson/refs/heads/master/india.json';
