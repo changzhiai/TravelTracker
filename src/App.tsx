@@ -779,7 +779,18 @@ function App() {
           .style("-webkit-user-select", "none")
           .style("-moz-user-select", "none")
           .style("-ms-user-select", "none")
+          .on("mousedown", (e) => e.preventDefault())
+          .on("selectstart", (e) => e.preventDefault())
+          .on("dragstart", (e) => e.preventDefault())
           .text(locationName);
+        
+        // Add event handlers to prevent text selection on the text element
+        const labelNode = label.node();
+        if (labelNode) {
+          labelNode.addEventListener('selectstart', (e) => e.preventDefault(), false);
+          labelNode.addEventListener('mousedown', (e) => e.preventDefault(), false);
+          labelNode.addEventListener('dragstart', (e) => e.preventDefault(), false);
+        }
         
         // Update background with actual text bbox and add styling
         const bbox = (label.node() as SVGTextElement)?.getBBox();
@@ -799,7 +810,18 @@ function App() {
               .style("user-select", "none")
               .style("-webkit-user-select", "none")
               .style("-moz-user-select", "none")
-              .style("-ms-user-select", "none");
+              .style("-ms-user-select", "none")
+              .on("mousedown", (e) => e.preventDefault())
+              .on("selectstart", (e) => e.preventDefault())
+              .on("dragstart", (e) => e.preventDefault());
+          
+          // Add event handlers to prevent text selection on the background element
+          const rectNode = rect.node();
+          if (rectNode) {
+            rectNode.addEventListener('selectstart', (e) => e.preventDefault(), false);
+            rectNode.addEventListener('mousedown', (e) => e.preventDefault(), false);
+            rectNode.addEventListener('dragstart', (e) => e.preventDefault(), false);
+          }
           
           // Add gradient if not exists
           if (defsSelection.select("#label-gradient").empty()) {
@@ -820,6 +842,21 @@ function App() {
           }
           rect.attr("fill", "url(#label-gradient)");
         }
+        
+        // Add event handlers to the hover label group to prevent text selection
+        if (hoverLabelGroupRef.current) {
+          const groupNode = hoverLabelGroupRef.current.node();
+          if (groupNode) {
+            const preventSelection = (e: Event) => {
+              e.preventDefault();
+              e.stopPropagation();
+            };
+            groupNode.addEventListener('selectstart', preventSelection, true);
+            groupNode.addEventListener('mousedown', preventSelection, true);
+            groupNode.addEventListener('touchstart', preventSelection, true);
+            groupNode.addEventListener('dragstart', preventSelection, true);
+          }
+        }
       }
     } else {
       // For mouse hover, use original positioning
@@ -839,7 +876,18 @@ function App() {
         .style("-webkit-user-select", "none")
         .style("-moz-user-select", "none")
         .style("-ms-user-select", "none")
+        .on("mousedown", (e) => e.preventDefault())
+        .on("selectstart", (e) => e.preventDefault())
+        .on("dragstart", (e) => e.preventDefault())
         .text(locationName);
+      
+      // Add event handlers to prevent text selection on the text element
+      const labelNode = label.node();
+      if (labelNode) {
+        labelNode.addEventListener('selectstart', (e) => e.preventDefault(), false);
+        labelNode.addEventListener('mousedown', (e) => e.preventDefault(), false);
+        labelNode.addEventListener('dragstart', (e) => e.preventDefault(), false);
+      }
       
       const bbox = (label.node() as SVGTextElement)?.getBBox();
       if (bbox) {
