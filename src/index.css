@@ -15,6 +15,32 @@
     overflow-x: hidden;
     position: relative;
   }
+  
+  /* Mobile-specific viewport and safe area handling */
+  @media (max-width: 768px) {
+    html {
+      height: 100%;
+      height: -webkit-fill-available;
+    }
+    
+    body {
+      min-height: -webkit-fill-available;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    
+    #root {
+      min-height: -webkit-fill-available;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  }
+  
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 @layer components {
@@ -33,6 +59,11 @@
     stroke-width: 1px;
   }
 
+  .country-path-hovered-by-list {
+    fill: #c7d2fe !important; /* Match map hover color */
+    stroke-width: 1px;
+  }
+
   .park-path {
     fill: rgba(59, 130, 246, 0.35); /* translucent indigo */
     stroke: #1d4ed8;
@@ -44,6 +75,12 @@
   .park-path:hover {
     fill: rgba(239, 68, 68, 0.6); /* Light red on hover */
     stroke: #dc2626; /* Darker red stroke */
+    stroke-width: 1.5px;
+  }
+
+  .park-path-hovered-by-list {
+    fill: rgba(239, 68, 68, 0.6) !important;
+    stroke: #dc2626;
     stroke-width: 1.5px;
   }
 
@@ -180,5 +217,10 @@
   /* Ensure emojis render properly on Windows */
   .custom-select {
     font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Twemoji Mozilla', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  /* Safe area bottom padding for mobile browsers */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 }

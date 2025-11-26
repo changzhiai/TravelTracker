@@ -13,6 +13,14 @@ import './App.css';
 type Scope = 'world' | 'usa' | 'usaParks' | 'europe' | 'china' | 'india';
 type NotificationType = 'success' | 'error';
 
+type ScopeOption = {
+  value: Scope;
+  label: string;
+  iconType: 'emoji' | 'flag';
+  icon?: string;
+  flagCode?: string;
+};
+
 interface GeoFeature extends Feature {
   properties: {
     name: string;
@@ -36,6 +44,9 @@ const CHINA_PROVINCES_URL = 'https://raw.githubusercontent.com/junwang23/geoCN/r
 const EUROPE_TOPJSON_URL = 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/refs/heads/master/TopoJSON/europe.topojson';
 const INDIA_STATES_URL = 'https://raw.githubusercontent.com/adarshbiradar/maps-geojson/refs/heads/master/india.json';
 
+const normalizeLocationName = (name: string) =>
+  name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+
 function App() {
   // State management
   const [currentScope, setCurrentScope] = useState<Scope>('world');
@@ -50,6 +61,7 @@ function App() {
   const [europeCountryFeatures, setEuropeCountryFeatures] = useState<GeoFeature[]>([]);
   const [chinaProvinceFeatures, setChinaProvinceFeatures] = useState<GeoFeature[]>([]);
   const [indiaStateFeatures, setIndiaStateFeatures] = useState<GeoFeature[]>([]);
+  const [isScopeDropdownOpen, setIsScopeDropdownOpen] = useState(false);
 
   // Refs for D3.js
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -64,6 +76,9 @@ function App() {
   const currentProjectionRef = useRef<d3.GeoProjection | null>(null);
   const initialTransformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const isUpdatingScopeRef = useRef(false);
+  const lastTouchTimeRef = useRef(0);
+  const listHoverPathRef = useRef<SVGPathElement | null>(null);
+  const scopeDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Computed values
   const currentFeatures = 
@@ -93,6 +108,17 @@ function App() {
     currentScope === 'europe' ? '% Europe' :
     currentScope === 'china' ? '% China' :
     '% India';
+
+  const scopeOptions: ScopeOption[] = [
+    { value: 'world', label: 'World', iconType: 'emoji', icon: '🌍' },
+    { value: 'usa', label: 'USA', iconType: 'flag', flagCode: 'us' },
+    { value: 'europe', label: 'Europe', iconType: 'flag', flagCode: 'eu' },
+    { value: 'china', label: 'China', iconType: 'flag', flagCode: 'cn' },
+    { value: 'india', label: 'India', iconType: 'flag', flagCode: 'in' },
+    { value: 'usaParks', label: 'US NPs', iconType: 'emoji', icon: '🏞️' },
+  ];
+
+  const currentScopeOption = scopeOptions.find(option => option.value === currentScope) ?? scopeOptions[0];
   
   const mapTitle = 
     currentScope === 'world' ? 'World Map' :
@@ -121,6 +147,85 @@ function App() {
   const percentage = totalReference > 0 
     ? ((locationsCount / totalReference) * 100).toFixed(1) 
     : '0.0';
+
+  const renderScopeIcon = (option: ScopeOption) => {
+    if (option.iconType === 'flag' && option.flagCode) {
+      return <span className={`fi fi-${option.flagCode} text-base leading-none`} aria-hidden="true"></span>;
+    }
+    if (option.icon) {
+      return <span aria-hidden="true">{option.icon}</span>;
+    }
+    return null;
+  };
+
+  const clearMapHoverFromList = useCallback(() => {
+    if (listHoverPathRef.current) {
+      listHoverPathRef.current.classList.remove('country-path-hovered-by-list', 'park-path-hovered-by-list');
+      listHoverPathRef.current = null;
+    }
+  }, []);
+
+  const highlightMapPathForListHover = useCallback((locationName: string) => {
+    if (!svgRef.current) return;
+
+    const normalizedName = normalizeLocationName(locationName);
+    let targetPath: SVGPathElement | null = null;
+
+    if (currentScope === 'usaParks') {
+      targetPath = svgRef.current.querySelector<SVGPathElement>(`path.park-path[data-name="${normalizedName}"]`);
+    }
+    if (!targetPath) {
+      targetPath = svgRef.current.querySelector<SVGPathElement>(`path[data-name="${normalizedName}"]`);
+    }
+
+    if (!targetPath) {
+      clearMapHoverFromList();
+      return;
+    }
+
+    if (listHoverPathRef.current && listHoverPathRef.current !== targetPath) {
+      listHoverPathRef.current.classList.remove('country-path-hovered-by-list', 'park-path-hovered-by-list');
+    }
+
+    listHoverPathRef.current = targetPath;
+    const hoverClass = targetPath.classList.contains('park-path')
+      ? 'park-path-hovered-by-list'
+      : 'country-path-hovered-by-list';
+    targetPath.classList.add(hoverClass);
+  }, [clearMapHoverFromList, currentScope]);
+
+  useEffect(() => {
+    return () => {
+      clearMapHoverFromList();
+    };
+  }, [clearMapHoverFromList]);
+
+  useEffect(() => {
+    clearMapHoverFromList();
+  }, [currentScope, clearMapHoverFromList]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!isScopeDropdownOpen) return;
+      if (scopeDropdownRef.current && !scopeDropdownRef.current.contains(event.target as Node)) {
+        setIsScopeDropdownOpen(false);
+      }
+    };
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsScopeDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeydown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeydown);
+    };
+  }, [isScopeDropdownOpen]);
 
   // Show location name notification
   const showLocationName = useCallback((locationName: string) => {
@@ -262,13 +367,20 @@ function App() {
 
       const features = (geoJsonData.features as GeoFeature[])
         .filter(d => d.properties && d.properties.name && d.geometry)
-        .map(feature => ({
-          ...feature,
-          properties: {
-            ...feature.properties,
-            name: String(feature.properties?.name ?? 'Unknown Park')
-          }
-        })) as GeoFeature[];
+        .map(feature => {
+          const normalizedName = String(feature.properties?.name ?? 'Unknown Park');
+          const friendlyName = normalizedName === 'American Samoa (National Park of American Samoa)'
+            ? 'American Samoa'
+            : normalizedName;
+
+          return {
+            ...feature,
+            properties: {
+              ...feature.properties,
+              name: friendlyName
+            }
+          };
+        }) as GeoFeature[];
 
       setUsNationalParkFeatures(features);
       console.log(`US National Parks data loaded successfully. Found ${features.length} parks.`);
@@ -593,7 +705,7 @@ function App() {
       : [mapGroupRef.current];
 
     names.forEach(name => {
-      const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+      const normalizedName = normalizeLocationName(name);
       targetGroups.forEach(group => {
         if (!group) return;
         const path = group.select<SVGPathElement>(`path[data-name="${normalizedName}"]`);
@@ -732,7 +844,8 @@ function App() {
         // Prevent selection gestures (long press) but allow dragging
         // Check if this is a selection gesture (single touch, no movement)
         if (e.touches.length === 1) {
-          const touch = e.touches[0];
+          const touch = e.touches.item(0);
+          if (!touch) return;
           const element = document.elementFromPoint(touch.clientX, touch.clientY);
           if (element && (element.tagName === 'text' || element.closest('text') || element.closest('.hover-label'))) {
             e.preventDefault();
@@ -1156,6 +1269,11 @@ function App() {
     // Update scope - the useEffect will handle all rendering with proper transform
     setCurrentScope(scope);
   }, [currentScope, loadUSAData, loadNationalParksData, loadEuropeData, loadChinaData, loadIndiaData]);
+
+  const handleScopeOptionClick = useCallback((scopeValue: Scope) => {
+    handleScopeSelection(scopeValue);
+    setIsScopeDropdownOpen(false);
+  }, [handleScopeSelection]);
 
   // Save map as PNG
   const saveMapAsPNG = useCallback(() => {
@@ -1714,7 +1832,8 @@ function App() {
 
           const joined = paths.join("path")
             .attr("class", "country-path")
-            .attr("data-name", (d: GeoFeature) => d.properties.name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, ''))
+            .attr("data-name", (d: GeoFeature) => normalizeLocationName(d.properties.name))
+            .attr("data-location-name", (d: GeoFeature) => d.properties.name)
             .attr("d", (d: GeoFeature) => {
               const pathData = pathRef.current!(d);
               if (!pathData && currentScope === 'china') {
@@ -1735,6 +1854,7 @@ function App() {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
+                if (Date.now() - lastTouchTimeRef.current < 600) return;
                 if (event.type === "mousemove") return;
                 if (!d.properties.name) return;
                 
@@ -1765,28 +1885,156 @@ function App() {
                 
                 const pathElement = d3.select(this);
                 let touchTimeout: number | null = null;
+                let movedBeyondTap = false;
+                let movedSinceRearm = false;
+                let longPressTriggered = false;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                let lastTouchX = 0;
+                let lastTouchY = 0;
+                let hasTouchPosition = false;
+                let activeTouchId: number | null = null;
+                const TAP_MOVE_THRESHOLD = 32;
+                lastTouchTimeRef.current = Date.now();
                 
-                // Prevent text selection during press and hold
+                const getRelevantTouch = (touches: TouchList) => {
+                  if (touches.length === 0) return null;
+                  if (activeTouchId !== null) {
+                    for (let i = 0; i < touches.length; i++) {
+                      const touch = touches.item(i);
+                      if (touch && touch.identifier === activeTouchId) {
+                        return touch;
+                      }
+                    }
+                  }
+                  return touches.item(0);
+                };
+                
+                const updateTouchPosition = (touches: TouchList) => {
+                  const touch = getRelevantTouch(touches);
+                  if (touch) {
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                    hasTouchPosition = true;
+                    return touch;
+                  }
+                  return null;
+                };
+                
+                const resolveLocationName = () => {
+                  if (hasTouchPosition) {
+                    const element = document.elementFromPoint(lastTouchX, lastTouchY);
+                    const pathNode = element?.closest?.('path[data-location-name]') as SVGPathElement | null;
+                    if (pathNode) {
+                      return pathNode.getAttribute('data-location-name') || d.properties.name;
+                    }
+                  }
+                  return d.properties.name;
+                };
+                
                 const preventSelection = (e: Event) => {
                   e.preventDefault();
                 };
                 
-                // Only show label on long press (after 300ms), not on quick tap
-                touchTimeout = window.setTimeout(() => {
-                  showHoverLabel(d.properties.name, true);
-                  touchTimeout = null;
-                  
-                  // Prevent text selection when label is showing
-                  document.addEventListener('selectstart', preventSelection);
-                  document.addEventListener('contextmenu', preventSelection);
-                }, 300);
-                
-                const handleTouchEnd = () => {
+                const startLongPressTimer = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
                   }
+                  movedSinceRearm = false;
+                  touchTimeout = window.setTimeout(() => {
+                    if (!longPressTriggered && !movedSinceRearm) {
+                      longPressTriggered = true;
+                      const targetName = resolveLocationName();
+                      if (targetName) {
+                        showHoverLabel(targetName, true);
+                      }
+                      touchTimeout = null;
+                      
+                      document.addEventListener('selectstart', preventSelection);
+                      document.addEventListener('contextmenu', preventSelection);
+                    }
+                  }, 320);
+                };
+                
+                const cancelLongPress = () => {
+                  if (touchTimeout !== null) {
+                    clearTimeout(touchTimeout);
+                    touchTimeout = null;
+                  }
+                  if (longPressTriggered) {
+                    if (hoverLabelGroupRef.current) {
+                      currentHoverNameRef.current = null;
+                      hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+                    }
+                    document.removeEventListener('selectstart', preventSelection);
+                    document.removeEventListener('contextmenu', preventSelection);
+                  }
+                  longPressTriggered = false;
+                  currentHoverNameRef.current = null;
+                };
+
+                const handleTouchMove = (e: TouchEvent) => {
+                  if (e.touches.length > 0) {
+                    const touch = updateTouchPosition(e.touches);
+                    if (!touch) return;
+                    const currentX = touch.clientX;
+                    const currentY = touch.clientY;
+                    const deltaX = Math.abs(currentX - touchStartX);
+                    const deltaY = Math.abs(currentY - touchStartY);
+                    if (deltaX > TAP_MOVE_THRESHOLD || deltaY > TAP_MOVE_THRESHOLD) {
+                      movedBeyondTap = true;
+                      movedSinceRearm = true;
+                      if (!longPressTriggered) {
+                        touchStartX = currentX;
+                        touchStartY = currentY;
+                        startLongPressTimer();
+                      }
+                    }
+                    if (longPressTriggered) {
+                      const currentName = resolveLocationName();
+                      if (currentName && currentName !== currentHoverNameRef.current) {
+                        showHoverLabel(currentName, true);
+                      }
+                    }
+                  }
+                };
+                
+                const didRelevantTouchEnd = (event?: TouchEvent) => {
+                  if (!event || activeTouchId === null) {
+                    return true;
+                  }
+                  for (let i = 0; i < event.changedTouches.length; i++) {
+                    const touch = event.changedTouches.item(i);
+                    if (touch && touch.identifier === activeTouchId) {
+                      return true;
+                    }
+                  }
+                  return false;
+                };
+                
+                const cleanupTouchListeners = () => {
+                  pathElement.on("touchend.touchlabel", null);
+                  pathElement.on("touchcancel.touchlabel", null);
+                  pathElement.on("touchmove.touchlabel", null);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                  document.removeEventListener('touchcancel', handleTouchEnd);
+                };
+
+                const handleTouchEnd = (event?: TouchEvent) => {
+                  if (event && !didRelevantTouchEnd(event)) {
+                    return;
+                  }
+
+                  const wasLongPress = longPressTriggered;
+                  cancelLongPress();
                   
-                  // Immediately hide label on touch release (no delay)
+                  if (!wasLongPress && !movedBeyondTap) {
+                    const targetName = resolveLocationName();
+                    if (targetName) {
+                      handleLocationToggle(targetName);
+                    }
+                  }
+                  
                   if (hoverLabelGroupRef.current) {
                     currentHoverNameRef.current = null;
                     hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
@@ -1796,21 +2044,36 @@ function App() {
                     hoverLabelTimeoutRef.current = null;
                   }
                   
-                  // Re-enable text selection
                   document.removeEventListener('selectstart', preventSelection);
                   document.removeEventListener('contextmenu', preventSelection);
                   
-                  pathElement.on("touchend.touchlabel", null);
-                  pathElement.on("touchcancel.touchlabel", null);
-                  document.removeEventListener('touchend', handleTouchEnd);
-                  document.removeEventListener('touchcancel', handleTouchEnd);
+                  cleanupTouchListeners();
+                  activeTouchId = null;
                 };
                 
-                // Attach to element and document for reliability
+                const initialTouch = _event.changedTouches.item(0);
+                if (initialTouch) {
+                  activeTouchId = initialTouch.identifier;
+                  lastTouchX = initialTouch.clientX;
+                  lastTouchY = initialTouch.clientY;
+                  hasTouchPosition = true;
+                  touchStartX = lastTouchX;
+                  touchStartY = lastTouchY;
+                } else {
+                  updateTouchPosition(_event.touches);
+                  if (hasTouchPosition) {
+                    touchStartX = lastTouchX;
+                    touchStartY = lastTouchY;
+                  }
+                }
+                
+                startLongPressTimer();
+                
                 pathElement.on("touchend.touchlabel", handleTouchEnd);
                 pathElement.on("touchcancel.touchlabel", handleTouchEnd);
-                document.addEventListener('touchend', handleTouchEnd, { once: true });
-                document.addEventListener('touchcancel', handleTouchEnd, { once: true });
+                pathElement.on("touchmove.touchlabel", handleTouchMove);
+                document.addEventListener('touchend', handleTouchEnd);
+                document.addEventListener('touchcancel', handleTouchEnd);
               })
               .style("pointer-events", 'auto');
           }
@@ -1826,12 +2089,14 @@ function App() {
 
             parkPaths.join("path")
               .attr("class", "park-path")
-              .attr("data-name", (d: GeoFeature) => d.properties.name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, ''))
+              .attr("data-name", (d: GeoFeature) => normalizeLocationName(d.properties.name))
+              .attr("data-location-name", (d: GeoFeature) => d.properties.name)
               .attr("d", (d: GeoFeature) => pathRef.current!(d) || '')
               .on("click", function(event: MouseEvent, d: GeoFeature) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
+                if (Date.now() - lastTouchTimeRef.current < 600) return;
                 if (event.type === "mousemove") return;
                 if (!d.properties.name) return;
                 
@@ -1862,28 +2127,156 @@ function App() {
                 
                 const pathElement = d3.select(this);
                 let touchTimeout: number | null = null;
+                let movedBeyondTap = false;
+                let movedSinceRearm = false;
+                let longPressTriggered = false;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                let lastTouchX = 0;
+                let lastTouchY = 0;
+                let hasTouchPosition = false;
+                let activeTouchId: number | null = null;
+                const TAP_MOVE_THRESHOLD = 32;
+                lastTouchTimeRef.current = Date.now();
                 
-                // Prevent text selection during press and hold
+                const getRelevantTouch = (touches: TouchList) => {
+                  if (touches.length === 0) return null;
+                  if (activeTouchId !== null) {
+                    for (let i = 0; i < touches.length; i++) {
+                      const touch = touches.item(i);
+                      if (touch && touch.identifier === activeTouchId) {
+                        return touch;
+                      }
+                    }
+                  }
+                  return touches.item(0);
+                };
+                
+                const updateTouchPosition = (touches: TouchList) => {
+                  const touch = getRelevantTouch(touches);
+                  if (touch) {
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                    hasTouchPosition = true;
+                    return touch;
+                  }
+                  return null;
+                };
+                
+                const resolveLocationName = () => {
+                  if (hasTouchPosition) {
+                    const element = document.elementFromPoint(lastTouchX, lastTouchY);
+                    const pathNode = element?.closest?.('path[data-location-name]') as SVGPathElement | null;
+                    if (pathNode) {
+                      return pathNode.getAttribute('data-location-name') || d.properties.name;
+                    }
+                  }
+                  return d.properties.name;
+                };
+                
                 const preventSelection = (e: Event) => {
                   e.preventDefault();
                 };
                 
-                // Only show label on long press (after 300ms), not on quick tap
-                touchTimeout = window.setTimeout(() => {
-                  showHoverLabel(d.properties.name, true);
-                  touchTimeout = null;
-                  
-                  // Prevent text selection when label is showing
-                  document.addEventListener('selectstart', preventSelection);
-                  document.addEventListener('contextmenu', preventSelection);
-                }, 300);
-                
-                const handleTouchEnd = () => {
+                const startLongPressTimer = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
                   }
+                  movedSinceRearm = false;
+                  touchTimeout = window.setTimeout(() => {
+                    if (!longPressTriggered && !movedSinceRearm) {
+                      longPressTriggered = true;
+                      const targetName = resolveLocationName();
+                      if (targetName) {
+                        showHoverLabel(targetName, true);
+                      }
+                      touchTimeout = null;
+                      
+                      document.addEventListener('selectstart', preventSelection);
+                      document.addEventListener('contextmenu', preventSelection);
+                    }
+                  }, 320);
+                };
+                
+                const cancelLongPress = () => {
+                  if (touchTimeout !== null) {
+                    clearTimeout(touchTimeout);
+                    touchTimeout = null;
+                  }
+                  if (longPressTriggered) {
+                    if (hoverLabelGroupRef.current) {
+                      currentHoverNameRef.current = null;
+                      hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+                    }
+                    document.removeEventListener('selectstart', preventSelection);
+                    document.removeEventListener('contextmenu', preventSelection);
+                  }
+                  longPressTriggered = false;
+                  currentHoverNameRef.current = null;
+                };
+
+                const handleTouchMove = (e: TouchEvent) => {
+                  if (e.touches.length > 0) {
+                    const touch = updateTouchPosition(e.touches);
+                    if (!touch) return;
+                    const currentX = touch.clientX;
+                    const currentY = touch.clientY;
+                    const deltaX = Math.abs(currentX - touchStartX);
+                    const deltaY = Math.abs(currentY - touchStartY);
+                    if (deltaX > TAP_MOVE_THRESHOLD || deltaY > TAP_MOVE_THRESHOLD) {
+                      movedBeyondTap = true;
+                      movedSinceRearm = true;
+                      if (!longPressTriggered) {
+                        touchStartX = currentX;
+                        touchStartY = currentY;
+                        startLongPressTimer();
+                      }
+                    }
+                    if (longPressTriggered) {
+                      const currentName = resolveLocationName();
+                      if (currentName && currentName !== currentHoverNameRef.current) {
+                        showHoverLabel(currentName, true);
+                      }
+                    }
+                  }
+                };
+                
+                const didRelevantTouchEnd = (event?: TouchEvent) => {
+                  if (!event || activeTouchId === null) {
+                    return true;
+                  }
+                  for (let i = 0; i < event.changedTouches.length; i++) {
+                    const touch = event.changedTouches.item(i);
+                    if (touch && touch.identifier === activeTouchId) {
+                      return true;
+                    }
+                  }
+                  return false;
+                };
+                
+                const cleanupTouchListeners = () => {
+                  pathElement.on("touchend.touchlabel", null);
+                  pathElement.on("touchcancel.touchlabel", null);
+                  pathElement.on("touchmove.touchlabel", null);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                  document.removeEventListener('touchcancel', handleTouchEnd);
+                };
+
+                const handleTouchEnd = (event?: TouchEvent) => {
+                  if (event && !didRelevantTouchEnd(event)) {
+                    return;
+                  }
+
+                  const wasLongPress = longPressTriggered;
+                  cancelLongPress();
                   
-                  // Immediately hide label on touch release (no delay)
+                  if (!wasLongPress && !movedBeyondTap) {
+                    const targetName = resolveLocationName();
+                    if (targetName) {
+                      handleLocationToggle(targetName);
+                    }
+                  }
+                  
                   if (hoverLabelGroupRef.current) {
                     currentHoverNameRef.current = null;
                     hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
@@ -1893,21 +2286,36 @@ function App() {
                     hoverLabelTimeoutRef.current = null;
                   }
                   
-                  // Re-enable text selection
                   document.removeEventListener('selectstart', preventSelection);
                   document.removeEventListener('contextmenu', preventSelection);
                   
-                  pathElement.on("touchend.touchlabel", null);
-                  pathElement.on("touchcancel.touchlabel", null);
-                  document.removeEventListener('touchend', handleTouchEnd);
-                  document.removeEventListener('touchcancel', handleTouchEnd);
+                  cleanupTouchListeners();
+                  activeTouchId = null;
                 };
                 
-                // Attach to element and document for reliability
+                const initialTouch = _event.changedTouches.item(0);
+                if (initialTouch) {
+                  activeTouchId = initialTouch.identifier;
+                  lastTouchX = initialTouch.clientX;
+                  lastTouchY = initialTouch.clientY;
+                  hasTouchPosition = true;
+                  touchStartX = lastTouchX;
+                  touchStartY = lastTouchY;
+                } else {
+                  updateTouchPosition(_event.touches);
+                  if (hasTouchPosition) {
+                    touchStartX = lastTouchX;
+                    touchStartY = lastTouchY;
+                  }
+                }
+                
+                startLongPressTimer();
+                
                 pathElement.on("touchend.touchlabel", handleTouchEnd);
                 pathElement.on("touchcancel.touchlabel", handleTouchEnd);
-                document.addEventListener('touchend', handleTouchEnd, { once: true });
-                document.addEventListener('touchcancel', handleTouchEnd, { once: true });
+                pathElement.on("touchmove.touchlabel", handleTouchMove);
+                document.addEventListener('touchend', handleTouchEnd);
+                document.addEventListener('touchcancel', handleTouchEnd);
               })
               .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
           }
@@ -1942,9 +2350,9 @@ function App() {
     .sort();
 
   return (
-    <div className="h-screen flex flex-col py-4 md:px-4 overflow-hidden box-border">
+    <div className="h-screen flex flex-col py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
+      <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
         <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-2">
             <img 
@@ -1955,20 +2363,49 @@ function App() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
           </div>
 
-          <div className="relative w-28 sm:w-32">
-            <select
-              value={currentScope}
-              onChange={(e) => handleScopeSelection(e.target.value as Scope)}
-              className="custom-select block w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 relative z-10"
-              style={{ fontFamily: "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Twemoji Mozilla', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif" }}
+          <div className="relative w-32 sm:w-36 z-30" ref={scopeDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsScopeDropdownOpen(prev => !prev)}
+              className="w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 flex items-center justify-between gap-2 relative z-10"
+              aria-haspopup="listbox"
+              aria-expanded={isScopeDropdownOpen}
+              aria-label="Select map scope"
             >
-              <option value="world">🌍 World</option>
-              <option value="usa">🇺🇸 USA</option>
-              <option value="europe">🇪🇺 Europe</option>
-              <option value="china">🇨🇳 China</option>
-              <option value="india">🇮🇳 India</option>
-              <option value="usaParks">🏞️ US NPs</option>
-            </select>
+              <span className="flex items-center gap-2">
+                {renderScopeIcon(currentScopeOption)}
+                <span>{currentScopeOption.label}</span>
+              </span>
+              <svg className={`w-4 h-4 text-gray-500 transition-transform ${isScopeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            {isScopeDropdownOpen && (
+              <div
+                role="listbox"
+                className="absolute left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border-2 border-indigo-100 rounded-xl shadow-2xl z-40 py-2 space-y-1 overflow-visible"
+              >
+                {scopeOptions.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={option.value === currentScope}
+                    onClick={() => handleScopeOptionClick(option.value)}
+                    className={`w-full flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-colors ${
+                      option.value === currentScope
+                        ? 'bg-indigo-50 text-indigo-600'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 font-semibold">
+                      {renderScopeIcon(option)}
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
@@ -1990,7 +2427,7 @@ function App() {
       {/* Main Content */}
       <div className="flex flex-1 space-x-4 relative pl-4 pr-0 md:pl-0 min-h-0">
         {/* Map Container */}
-        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20">
+        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-safe md:pb-6">
           <div className="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-3">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
@@ -2156,7 +2593,7 @@ function App() {
             </div>
           )}
           <p 
-            className="text-xs text-gray-500 text-right mt-3 font-medium" 
+            className="text-xs text-gray-500 text-right mt-3 font-medium pb-safe md:pb-3" 
             style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
             onMouseDown={(e) => e.preventDefault()}
             onDragStart={(e) => e.preventDefault()}
@@ -2193,7 +2630,7 @@ function App() {
 
           <div ref={listContainerRef} className="flex-grow overflow-y-auto border-2 border-gray-100 rounded-xl divide-y divide-gray-100 bg-gradient-to-b from-white to-gray-50/50">
             {filteredLocations.map((name) => {
-              const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+              const normalizedName = normalizeLocationName(name);
               // Use a ref to track selection state to avoid re-renders
               const isSelected = activeLocations.has(name);
               return (
@@ -2230,9 +2667,13 @@ function App() {
                   onMouseEnter={() => {
                     // Don't show label on touch devices
                     if (isTouchDeviceRef.current) return;
+                    highlightMapPathForListHover(name);
                     showHoverLabel(name);
                   }}
-                  onMouseLeave={hideHoverLabel}
+                  onMouseLeave={() => {
+                    clearMapHoverFromList();
+                    hideHoverLabel();
+                  }}
                   onTouchStart={(e) => {
                     // Only show label on long press (after 300ms), not on quick tap
                     let touchTimeout: number | null = window.setTimeout(() => {
@@ -2245,6 +2686,7 @@ function App() {
                         clearTimeout(touchTimeout);
                       }
                       hideHoverLabel();
+                      clearMapHoverFromList();
                       document.removeEventListener('touchend', handleTouchEnd);
                       document.removeEventListener('touchcancel', handleTouchEnd);
                     };
@@ -2257,6 +2699,7 @@ function App() {
                   }}
                   onTouchEnd={() => {
                     hideHoverLabel();
+                    clearMapHoverFromList();
                   }}
                 >
                   <span>{name}</span>
