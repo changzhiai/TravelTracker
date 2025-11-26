@@ -668,22 +668,96 @@ function App() {
     const preventSelection = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
+      return false;
     };
 
+    // Prevent text selection events
     container.addEventListener('selectstart', preventSelection, true);
     container.addEventListener('dragstart', preventSelection, true);
     container.addEventListener('contextmenu', preventSelection, true);
+    
+    // Prevent text selection on mouse events
     container.addEventListener('mousedown', (e) => {
       // Prevent text selection on long press
       if (e.detail > 1) {
         e.preventDefault();
+        e.stopPropagation();
       }
     }, true);
+    
+    // Prevent text selection on touch events (mobile)
+    // Only prevent on text elements, not on paths (to allow dragging)
+    const preventTouchSelection = (e: TouchEvent) => {
+      const target = e.target as Element;
+      if (target) {
+        // Prevent selection on text elements or their parents
+        if (target.tagName === 'text' || 
+            target.closest('text') || 
+            target.closest('.hover-label') ||
+            target.closest('.hover-label-bg') ||
+            target.classList.contains('hover-label') ||
+            target.classList.contains('hover-label-bg')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+    };
+    
+    container.addEventListener('touchstart', preventTouchSelection, { passive: false, capture: true });
+    
+    // Prevent text selection on the SVG element
+    const svg = svgRef.current;
+    if (svg) {
+      svg.addEventListener('selectstart', preventSelection, true);
+      svg.addEventListener('dragstart', preventSelection, true);
+      svg.addEventListener('contextmenu', preventSelection, true);
+      svg.addEventListener('touchstart', preventTouchSelection, { passive: false, capture: true });
+    }
+    
+    // Add document-level handler to prevent selection when touching map area
+    const handleDocumentSelectStart = (e: Event) => {
+      const target = e.target as Node;
+      if (target && container.contains(target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+    
+    // More aggressive handler for mobile - prevent selection on any touch within map
+    const handleDocumentTouch = (e: TouchEvent) => {
+      const target = e.target as Node;
+      if (target && container.contains(target)) {
+        // Prevent selection gestures (long press) but allow dragging
+        // Check if this is a selection gesture (single touch, no movement)
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (element && (element.tagName === 'text' || element.closest('text') || element.closest('.hover-label'))) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('selectstart', handleDocumentSelectStart, true);
+    document.addEventListener('touchstart', handleDocumentTouch, { passive: false, capture: true });
 
     return () => {
       container.removeEventListener('selectstart', preventSelection, true);
       container.removeEventListener('dragstart', preventSelection, true);
       container.removeEventListener('contextmenu', preventSelection, true);
+      container.removeEventListener('touchstart', preventTouchSelection, true);
+      document.removeEventListener('selectstart', handleDocumentSelectStart, true);
+      document.removeEventListener('touchstart', handleDocumentTouch, true);
+      if (svg) {
+        svg.removeEventListener('selectstart', preventSelection, true);
+        svg.removeEventListener('dragstart', preventSelection, true);
+        svg.removeEventListener('contextmenu', preventSelection, true);
+        svg.removeEventListener('touchstart', preventTouchSelection, true);
+      }
     };
   }, []);
 
@@ -1285,6 +1359,7 @@ function App() {
       .style("-moz-user-select", "none")
       .style("-ms-user-select", "none")
       .style("-webkit-touch-callout", "none")
+      .style("-webkit-tap-highlight-color", "transparent")
       .on("selectstart", (e) => e.preventDefault())
       .on("mousedown", (e) => {
         // Prevent text selection on long press
@@ -1885,6 +1960,7 @@ function App() {
               value={currentScope}
               onChange={(e) => handleScopeSelection(e.target.value as Scope)}
               className="custom-select block w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 relative z-10"
+              style={{ fontFamily: "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Twemoji Mozilla', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
               <option value="world">🌍 World</option>
               <option value="usa">🇺🇸 USA</option>
@@ -2050,7 +2126,14 @@ function App() {
             id="map-container" 
             ref={mapContainerRef} 
             className="flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50"
-            style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none', WebkitTouchCallout: 'none' }}
+            style={{ 
+              userSelect: 'none', 
+              WebkitUserSelect: 'none', 
+              MozUserSelect: 'none', 
+              msUserSelect: 'none', 
+              WebkitTouchCallout: 'none',
+              WebkitTapHighlightColor: 'transparent'
+            } as React.CSSProperties}
             onMouseDown={(e) => {
               // Prevent text selection on long press
               if (e.detail > 1) {
