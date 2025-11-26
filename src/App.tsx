@@ -2363,16 +2363,16 @@ function App() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
           </div>
 
-          <div className="relative w-32 sm:w-36 z-30" ref={scopeDropdownRef}>
+          <div className="relative w-36 sm:w-40 z-30" ref={scopeDropdownRef}>
             <button
               type="button"
               onClick={() => setIsScopeDropdownOpen(prev => !prev)}
-              className="w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 flex items-center justify-between gap-2 relative z-10"
+              className="w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 flex items-center justify-between gap-1.5 relative z-10"
               aria-haspopup="listbox"
               aria-expanded={isScopeDropdownOpen}
               aria-label="Select map scope"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1">
                 {renderScopeIcon(currentScopeOption)}
                 <span>{currentScopeOption.label}</span>
               </span>
@@ -2398,7 +2398,7 @@ function App() {
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <span className="flex items-center gap-2 font-semibold">
+                    <span className="flex items-center gap-1 font-semibold">
                       {renderScopeIcon(option)}
                       {option.label}
                     </span>

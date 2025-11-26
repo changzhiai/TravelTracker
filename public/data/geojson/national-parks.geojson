@@ -4268,7 +4268,7 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "American Samoa (National Park of American Samoa)"
+        "name": "American Samoa"
       },
       "geometry": {
         "type": "MultiPolygon",
