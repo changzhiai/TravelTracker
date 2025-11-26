@@ -2007,7 +2007,13 @@ function App() {
               </div>
             </div>
           )}
-          <p className="text-xs text-gray-500 text-right mt-3 font-medium">Scroll to zoom • Click/Drag to pan</p>
+          <p 
+            className="text-xs text-gray-500 text-right mt-3 font-medium" 
+            style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
+            onMouseDown={(e) => e.preventDefault()}
+            onSelectStart={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+          >Scroll to zoom • Click/Drag to pan</p>
         </div>
 
         {/* Sidebar */}
