@@ -191,7 +191,20 @@ function App() {
       const geoJsonData = await d3.json<FeatureCollection>(WORLD_GEOJSON_URL);
       if (!geoJsonData) throw new Error('Failed to load world data');
       const features = (geoJsonData.features as GeoFeature[])
-        .filter(d => d.properties.name && d.properties.name !== 'Antarctica');
+        .filter(d => d.properties.name && d.properties.name !== 'Antarctica')
+        .map(feature => {
+          // Update Taiwan label to Taiwan (China)
+          if (feature.properties.name === 'Taiwan') {
+            return {
+              ...feature,
+              properties: {
+                ...feature.properties,
+                name: 'Taiwan (China)'
+              }
+            };
+          }
+          return feature;
+        });
       setWorldCountryFeatures(features);
       console.log(`World GeoJSON map data loaded successfully. Found ${features.length} countries (excluding Antarctica).`);
       console.log("Note: This dataset includes ~177 countries. UN recognizes 195 countries total.");
@@ -762,6 +775,10 @@ function App() {
           .attr("pointer-events", "none")
           .attr("filter", "url(#label-shadow)")
           .style("opacity", 1)
+          .style("user-select", "none")
+          .style("-webkit-user-select", "none")
+          .style("-moz-user-select", "none")
+          .style("-ms-user-select", "none")
           .text(locationName);
         
         // Update background with actual text bbox and add styling
@@ -778,7 +795,11 @@ function App() {
               .attr("ry", "8")
               .attr("pointer-events", "none")
               .attr("filter", "url(#label-shadow)")
-              .style("opacity", 1);
+              .style("opacity", 1)
+              .style("user-select", "none")
+              .style("-webkit-user-select", "none")
+              .style("-moz-user-select", "none")
+              .style("-ms-user-select", "none");
           
           // Add gradient if not exists
           if (defsSelection.select("#label-gradient").empty()) {
@@ -814,6 +835,10 @@ function App() {
         .attr("pointer-events", "none")
         .attr("filter", "url(#label-shadow)")
         .style("opacity", 1)
+        .style("user-select", "none")
+        .style("-webkit-user-select", "none")
+        .style("-moz-user-select", "none")
+        .style("-ms-user-select", "none")
         .text(locationName);
       
       const bbox = (label.node() as SVGTextElement)?.getBBox();
@@ -831,7 +856,11 @@ function App() {
           .attr("ry", "8")
           .attr("pointer-events", "none")
           .attr("filter", "url(#label-shadow)")
-          .style("opacity", 1);
+          .style("opacity", 1)
+          .style("user-select", "none")
+          .style("-webkit-user-select", "none")
+          .style("-moz-user-select", "none")
+          .style("-ms-user-select", "none");
         
         // Add subtle gradient for depth
         if (defsSelection.select("#label-gradient").empty()) {

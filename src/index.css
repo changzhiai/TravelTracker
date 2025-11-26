@@ -47,6 +47,16 @@
     stroke-width: 1.5px;
   }
 
+  /* Prevent text selection on hover labels */
+  .hover-label,
+  .hover-label-bg {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
+  }
+
   /* Custom class for the active/clicked path (Vibrant Emerald) */
   .country-highlight {
     fill: #10b981 !important; /* Tailwind emerald-500 */
