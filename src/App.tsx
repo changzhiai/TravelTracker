@@ -2368,7 +2368,7 @@ function App() {
   return (
     <div
       className="flex flex-col py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
-      style={{ minHeight: 'var(--app-height, 100dvh)' }}
+      style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
       <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
@@ -2446,7 +2446,7 @@ function App() {
       {/* Main Content */}
       <div className="flex flex-1 space-x-4 relative pl-4 pr-0 md:pl-0 min-h-0">
         {/* Map Container */}
-        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-safe md:pb-6">
+        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-3 md:pb-6">
           <div className="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-3">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
@@ -2611,12 +2611,6 @@ function App() {
               </div>
             </div>
           )}
-          <p 
-            className="text-xs text-gray-500 text-right mt-3 font-medium pb-safe md:pb-3" 
-            style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
-            onMouseDown={(e) => e.preventDefault()}
-            onDragStart={(e) => e.preventDefault()}
-          >Scroll to zoom • Click/Drag to pan</p>
         </div>
 
         {/* Sidebar */}
