@@ -660,6 +660,33 @@ function App() {
     isTouchDeviceRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }, []);
 
+  // Prevent text selection on map container
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const preventSelection = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    container.addEventListener('selectstart', preventSelection, true);
+    container.addEventListener('dragstart', preventSelection, true);
+    container.addEventListener('contextmenu', preventSelection, true);
+    container.addEventListener('mousedown', (e) => {
+      // Prevent text selection on long press
+      if (e.detail > 1) {
+        e.preventDefault();
+      }
+    }, true);
+
+    return () => {
+      container.removeEventListener('selectstart', preventSelection, true);
+      container.removeEventListener('dragstart', preventSelection, true);
+      container.removeEventListener('contextmenu', preventSelection, true);
+    };
+  }, []);
+
   // Show hover label for a location
   const showHoverLabel = useCallback((locationName: string, isTouch: boolean = false) => {
     // Don't show label if we just clicked (within 800ms)
@@ -1252,9 +1279,34 @@ function App() {
       .attr("height", '100%')
       .style("position", "absolute")
       .style("top", "0")
-      .style("left", "0");
+      .style("left", "0")
+      .style("user-select", "none")
+      .style("-webkit-user-select", "none")
+      .style("-moz-user-select", "none")
+      .style("-ms-user-select", "none")
+      .style("-webkit-touch-callout", "none")
+      .on("selectstart", (e) => e.preventDefault())
+      .on("mousedown", (e) => {
+        // Prevent text selection on long press
+        if (e.detail > 1) {
+          e.preventDefault();
+        }
+      })
+      .on("dragstart", (e) => e.preventDefault())
+      .on("contextmenu", (e) => e.preventDefault());
 
     svgRef.current = svg.node();
+    
+    // Add event listeners directly to SVG element
+    if (svgRef.current) {
+      const preventSelection = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      svgRef.current.addEventListener('selectstart', preventSelection, true);
+      svgRef.current.addEventListener('dragstart', preventSelection, true);
+      svgRef.current.addEventListener('contextmenu', preventSelection, true);
+    }
 
     const mapGroup = svg.append("g").attr("id", "map-group");
     const parkGroup = svg.append("g").attr("id", "park-group");
@@ -1994,7 +2046,20 @@ function App() {
             </div>
           </div>
 
-          <div id="map-container" ref={mapContainerRef} className="flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50"></div>
+          <div 
+            id="map-container" 
+            ref={mapContainerRef} 
+            className="flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50"
+            style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none', WebkitTouchCallout: 'none' }}
+            onMouseDown={(e) => {
+              // Prevent text selection on long press
+              if (e.detail > 1) {
+                e.preventDefault();
+              }
+            }}
+            onDragStart={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+          ></div>
           
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm z-50 rounded-xl pointer-events-none">
@@ -2011,7 +2076,6 @@ function App() {
             className="text-xs text-gray-500 text-right mt-3 font-medium" 
             style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
             onMouseDown={(e) => e.preventDefault()}
-            onSelectStart={(e) => e.preventDefault()}
             onDragStart={(e) => e.preventDefault()}
           >Scroll to zoom • Click/Drag to pan</p>
         </div>

@@ -57,6 +57,17 @@
     pointer-events: none;
   }
 
+  /* Prevent text selection on map container and SVG */
+  #map-container,
+  #map-container svg,
+  #map-container * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
   /* Custom class for the active/clicked path (Vibrant Emerald) */
   .country-highlight {
     fill: #10b981 !important; /* Tailwind emerald-500 */
