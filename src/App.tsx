@@ -648,7 +648,7 @@ function App() {
   }, []);
 
   // Show hover label for a location
-  const showHoverLabel = useCallback((locationName: string) => {
+  const showHoverLabel = useCallback((locationName: string, isTouch: boolean = false) => {
     // Don't show label if we just clicked (within 800ms)
     if (Date.now() - lastClickTimeRef.current < 800) return;
     
@@ -662,44 +662,196 @@ function App() {
     if (currentHoverNameRef.current === locationName) return;
     currentHoverNameRef.current = locationName;
     
-    if (!hoverLabelGroupRef.current || !pathRef.current) return;
+    if (!hoverLabelGroupRef.current || !pathRef.current || !svgRef.current || !mapContainerRef.current) return;
     
-    // Find the feature by name
-    const feature = selectableFeatures.find(d => d.properties.name === locationName);
-    if (!feature) return;
+    let x: number, y: number;
     
-    const centroid = pathRef.current.centroid(feature);
-    const [x, y] = centroid;
+    if (isTouch) {
+      // Position at absolute bottom left for touch devices
+      // Use viewBox coordinates since hoverLabelGroup is not transformed
+      const svg = svgRef.current;
+      const viewBox = svg.viewBox.baseVal;
+      
+      // Position at most left, with padding only from bottom
+      const paddingY = 15;
+      
+      x = 0;
+      y = viewBox.height - paddingY;
+    } else {
+      // Find the feature by name and use centroid for mouse hover
+      const feature = selectableFeatures.find(d => d.properties.name === locationName);
+      if (!feature) return;
+      const centroid = pathRef.current.centroid(feature);
+      [x, y] = centroid;
+    }
     
-    hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+    hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg, .hover-label-shadow").remove();
     
-    const label = hoverLabelGroupRef.current.append("text")
-      .attr("class", "hover-label")
-      .attr("x", x)
-      .attr("y", y)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .attr("font-weight", "600")
-      .attr("fill", "#1f2937")
-      .attr("pointer-events", "none")
-      .style("opacity", 1)
-      .text(locationName);
+    // Create shadow filter for depth
+    let defsSelection = d3.select(svgRef.current).select<SVGDefsElement>("defs");
+    if (defsSelection.empty()) {
+      defsSelection = d3.select(svgRef.current).append<SVGDefsElement>("defs");
+    }
+    if (defsSelection.select("#label-shadow").empty()) {
+      const filter = defsSelection.append("filter")
+        .attr("id", "label-shadow")
+        .attr("x", "-50%")
+        .attr("y", "-50%")
+        .attr("width", "200%")
+        .attr("height", "200%");
+      filter.append("feGaussianBlur")
+        .attr("in", "SourceAlpha")
+        .attr("stdDeviation", "2");
+      filter.append("feOffset")
+        .attr("dx", "0")
+        .attr("dy", "2")
+        .attr("result", "offsetblur");
+      const feComponentTransfer = filter.append("feComponentTransfer")
+        .attr("in", "offsetblur");
+      feComponentTransfer.append("feFuncA")
+        .attr("type", "linear")
+        .attr("slope", "0.3");
+      const feMerge = filter.append("feMerge");
+      feMerge.append("feMergeNode");
+      feMerge.append("feMergeNode")
+        .attr("in", "SourceGraphic");
+    }
     
-    const bbox = (label.node() as SVGTextElement)?.getBBox();
-    if (bbox) {
-      const padding = 4;
-      hoverLabelGroupRef.current.insert("rect", "text")
-        .attr("class", "hover-label-bg")
-        .attr("x", bbox.x - padding)
-        .attr("y", bbox.y - padding)
-        .attr("width", bbox.width + padding * 2)
-        .attr("height", bbox.height + padding * 2)
-        .attr("fill", "rgba(255, 255, 255, 0.95)")
-        .attr("stroke", "#e5e7eb")
-        .attr("stroke-width", "1")
-        .attr("rx", "4")
+    const paddingX = isTouch ? 12 : 10;
+    const paddingY = isTouch ? 8 : 6;
+    
+    // For touch, position entire frame (background) at leftmost (x=0)
+    // Text will be positioned inside with padding
+    const textY = y;
+    
+    // First create background rectangle at leftmost position
+    if (isTouch) {
+      // For touch, we need to estimate width first, then position text inside
+      // Create a temporary text element to measure
+      const tempText = hoverLabelGroupRef.current.append("text")
+        .attr("class", "temp-measure")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("font-size", "14px")
+        .attr("font-weight", "600")
+        .attr("font-family", "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif")
+        .text(locationName);
+      
+      const tempBbox = (tempText.node() as SVGTextElement)?.getBBox();
+      tempText.remove();
+      
+      if (tempBbox) {
+        // Create background at x=0
+        const rect = hoverLabelGroupRef.current.insert("rect", ".hover-label")
+          .attr("class", "hover-label-bg")
+          .attr("x", 0)
+          .attr("y", textY - tempBbox.height / 2 - paddingY)
+          .attr("width", tempBbox.width + paddingX * 2)
+          .attr("height", tempBbox.height + paddingY * 2);
+        
+        // Position text inside with padding on both sides
+        const label = hoverLabelGroupRef.current.append("text")
+          .attr("class", "hover-label")
+          .attr("x", paddingX)
+          .attr("y", textY)
+          .attr("text-anchor", "start")
+          .attr("font-size", "14px")
+          .attr("font-weight", "600")
+          .attr("font-family", "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif")
+          .attr("fill", "#111827")
+          .attr("pointer-events", "none")
+          .attr("filter", "url(#label-shadow)")
+          .style("opacity", 1)
+          .text(locationName);
+        
+        // Update background with actual text bbox and add styling
+        const bbox = (label.node() as SVGTextElement)?.getBBox();
+        if (bbox) {
+          rect.attr("x", 0)  // Ensure background is always at leftmost position
+              .attr("width", bbox.width + paddingX * 2)
+              .attr("height", bbox.height + paddingY * 2)
+              .attr("y", bbox.y - paddingY)
+              .attr("fill", "rgba(255, 255, 255, 0.98)")
+              .attr("stroke", "rgba(0, 0, 0, 0.1)")
+              .attr("stroke-width", "1")
+              .attr("rx", "8")
+              .attr("ry", "8")
+              .attr("pointer-events", "none")
+              .attr("filter", "url(#label-shadow)")
+              .style("opacity", 1);
+          
+          // Add gradient if not exists
+          if (defsSelection.select("#label-gradient").empty()) {
+            const gradient = defsSelection.append("linearGradient")
+              .attr("id", "label-gradient")
+              .attr("x1", "0%")
+              .attr("y1", "0%")
+              .attr("x2", "0%")
+              .attr("y2", "100%");
+            gradient.append("stop")
+              .attr("offset", "0%")
+              .attr("stop-color", "rgba(255, 255, 255, 0.98)")
+              .attr("stop-opacity", 1);
+            gradient.append("stop")
+              .attr("offset", "100%")
+              .attr("stop-color", "rgba(249, 250, 251, 0.98)")
+              .attr("stop-opacity", 1);
+          }
+          rect.attr("fill", "url(#label-gradient)");
+        }
+      }
+    } else {
+      // For mouse hover, use original positioning
+      const label = hoverLabelGroupRef.current.append("text")
+        .attr("class", "hover-label")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "13px")
+        .attr("font-weight", "600")
+        .attr("font-family", "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif")
+        .attr("fill", "#111827")
         .attr("pointer-events", "none")
-        .style("opacity", 1);
+        .attr("filter", "url(#label-shadow)")
+        .style("opacity", 1)
+        .text(locationName);
+      
+      const bbox = (label.node() as SVGTextElement)?.getBBox();
+      if (bbox) {
+        const rect = hoverLabelGroupRef.current.insert("rect", "text")
+          .attr("class", "hover-label-bg")
+          .attr("x", bbox.x - paddingX)
+          .attr("y", bbox.y - paddingY)
+          .attr("width", bbox.width + paddingX * 2)
+          .attr("height", bbox.height + paddingY * 2)
+          .attr("fill", "rgba(255, 255, 255, 0.98)")
+          .attr("stroke", "rgba(0, 0, 0, 0.1)")
+          .attr("stroke-width", "1")
+          .attr("rx", "8")
+          .attr("ry", "8")
+          .attr("pointer-events", "none")
+          .attr("filter", "url(#label-shadow)")
+          .style("opacity", 1);
+        
+        // Add subtle gradient for depth
+        if (defsSelection.select("#label-gradient").empty()) {
+          const gradient = defsSelection.append("linearGradient")
+            .attr("id", "label-gradient")
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "0%")
+            .attr("y2", "100%");
+          gradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "rgba(255, 255, 255, 0.98)")
+            .attr("stop-opacity", 1);
+          gradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "rgba(249, 250, 251, 0.98)")
+            .attr("stop-opacity", 1);
+        }
+        rect.attr("fill", "url(#label-gradient)");
+      }
     }
   }, [selectableFeatures]);
 
@@ -1086,9 +1238,10 @@ function App() {
         if (labelGroupRef.current) {
           labelGroupRef.current.attr("transform", event.transform);
         }
-        if (hoverLabelGroupRef.current) {
-          hoverLabelGroupRef.current.attr("transform", event.transform);
-        }
+        // Don't transform hoverLabelGroup - keep labels fixed in screen space
+        // if (hoverLabelGroupRef.current) {
+        //   hoverLabelGroupRef.current.attr("transform", event.transform);
+        // }
       })
       .wheelDelta((event) => {
         // Custom wheel delta for smoother zooming
@@ -1343,9 +1496,10 @@ function App() {
             if (labelGroupRef.current) {
               labelGroupRef.current.attr("transform", initialTransformRef.current.toString());
             }
-            if (hoverLabelGroupRef.current) {
-              hoverLabelGroupRef.current.attr("transform", initialTransformRef.current.toString());
-            }
+            // Don't transform hoverLabelGroup - keep labels fixed in screen space
+            // if (hoverLabelGroupRef.current) {
+            //   hoverLabelGroupRef.current.attr("transform", initialTransformRef.current.toString());
+            // }
           }
         }
         
@@ -1408,17 +1562,40 @@ function App() {
                 const pathElement = d3.select(this);
                 let touchTimeout: number | null = null;
                 
+                // Prevent text selection during press and hold
+                const preventSelection = (e: Event) => {
+                  e.preventDefault();
+                };
+                
                 // Only show label on long press (after 300ms), not on quick tap
                 touchTimeout = window.setTimeout(() => {
-                  showHoverLabel(d.properties.name);
+                  showHoverLabel(d.properties.name, true);
                   touchTimeout = null;
+                  
+                  // Prevent text selection when label is showing
+                  document.addEventListener('selectstart', preventSelection);
+                  document.addEventListener('contextmenu', preventSelection);
                 }, 300);
                 
                 const handleTouchEnd = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
                   }
-                  hideHoverLabel();
+                  
+                  // Immediately hide label on touch release (no delay)
+                  if (hoverLabelGroupRef.current) {
+                    currentHoverNameRef.current = null;
+                    hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+                  }
+                  if (hoverLabelTimeoutRef.current) {
+                    clearTimeout(hoverLabelTimeoutRef.current);
+                    hoverLabelTimeoutRef.current = null;
+                  }
+                  
+                  // Re-enable text selection
+                  document.removeEventListener('selectstart', preventSelection);
+                  document.removeEventListener('contextmenu', preventSelection);
+                  
                   pathElement.on("touchend.touchlabel", null);
                   pathElement.on("touchcancel.touchlabel", null);
                   document.removeEventListener('touchend', handleTouchEnd);
@@ -1482,17 +1659,40 @@ function App() {
                 const pathElement = d3.select(this);
                 let touchTimeout: number | null = null;
                 
+                // Prevent text selection during press and hold
+                const preventSelection = (e: Event) => {
+                  e.preventDefault();
+                };
+                
                 // Only show label on long press (after 300ms), not on quick tap
                 touchTimeout = window.setTimeout(() => {
-                  showHoverLabel(d.properties.name);
+                  showHoverLabel(d.properties.name, true);
                   touchTimeout = null;
+                  
+                  // Prevent text selection when label is showing
+                  document.addEventListener('selectstart', preventSelection);
+                  document.addEventListener('contextmenu', preventSelection);
                 }, 300);
                 
                 const handleTouchEnd = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
                   }
-                  hideHoverLabel();
+                  
+                  // Immediately hide label on touch release (no delay)
+                  if (hoverLabelGroupRef.current) {
+                    currentHoverNameRef.current = null;
+                    hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
+                  }
+                  if (hoverLabelTimeoutRef.current) {
+                    clearTimeout(hoverLabelTimeoutRef.current);
+                    hoverLabelTimeoutRef.current = null;
+                  }
+                  
+                  // Re-enable text selection
+                  document.removeEventListener('selectstart', preventSelection);
+                  document.removeEventListener('contextmenu', preventSelection);
+                  
                   pathElement.on("touchend.touchlabel", null);
                   pathElement.on("touchcancel.touchlabel", null);
                   document.removeEventListener('touchend', handleTouchEnd);
@@ -1806,7 +2006,7 @@ function App() {
                   onTouchStart={(e) => {
                     // Only show label on long press (after 300ms), not on quick tap
                     let touchTimeout: number | null = window.setTimeout(() => {
-                      showHoverLabel(name);
+                      showHoverLabel(name, true);
                       touchTimeout = null;
                     }, 300);
                     
