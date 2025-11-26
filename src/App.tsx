@@ -205,6 +205,22 @@ function App() {
   }, [currentScope, clearMapHoverFromList]);
 
   useEffect(() => {
+    const updateAppHeight = () => {
+      const height = `${window.innerHeight}px`;
+      document.documentElement.style.setProperty('--app-height', height);
+    };
+
+    updateAppHeight();
+    window.addEventListener('resize', updateAppHeight);
+    window.addEventListener('orientationchange', updateAppHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateAppHeight);
+      window.removeEventListener('orientationchange', updateAppHeight);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!isScopeDropdownOpen) return;
       if (scopeDropdownRef.current && !scopeDropdownRef.current.contains(event.target as Node)) {
@@ -2350,7 +2366,10 @@ function App() {
     .sort();
 
   return (
-    <div className="h-screen flex flex-col py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4">
+    <div
+      className="flex flex-col py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
+      style={{ minHeight: 'var(--app-height, 100dvh)' }}
+    >
       {/* Header */}
       <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
         <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
