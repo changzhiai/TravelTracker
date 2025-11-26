@@ -639,9 +639,19 @@ function App() {
 
   const hoverLabelTimeoutRef = useRef<number | null>(null);
   const currentHoverNameRef = useRef<string | null>(null);
+  const lastClickTimeRef = useRef<number>(0);
+  const isTouchDeviceRef = useRef<boolean>(false);
+
+  // Detect touch device
+  useEffect(() => {
+    isTouchDeviceRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }, []);
 
   // Show hover label for a location
   const showHoverLabel = useCallback((locationName: string) => {
+    // Don't show label if we just clicked (within 800ms)
+    if (Date.now() - lastClickTimeRef.current < 800) return;
+    
     // Clear any pending hide timeout
     if (hoverLabelTimeoutRef.current) {
       clearTimeout(hoverLabelTimeoutRef.current);
@@ -1369,17 +1379,58 @@ function App() {
                 event.stopImmediatePropagation();
                 if (event.type === "mousemove") return;
                 if (!d.properties.name) return;
+                
+                // Hide label and record click time to prevent showing immediately after
+                hideHoverLabel();
+                lastClickTimeRef.current = Date.now();
+                
                 handleLocationToggle(d.properties.name);
               })
               .on("mousedown", function(event: MouseEvent) {
                 event.stopPropagation();
+                // Record mousedown time to prevent label showing on click
+                lastClickTimeRef.current = Date.now();
+                hideHoverLabel();
               })
               .on("mouseenter", function(_event: MouseEvent, d: GeoFeature) {
+                // Don't show label on touch devices (mouse events can fire after touch on some browsers)
+                if (isTouchDeviceRef.current) return;
+                // Don't show label if we just clicked (within 800ms)
+                if (Date.now() - lastClickTimeRef.current < 800) return;
                 if (d.properties.name) {
                   showHoverLabel(d.properties.name);
                 }
               })
               .on("mouseleave", hideHoverLabel)
+              .on("touchstart", function(_event: TouchEvent, d: GeoFeature) {
+                if (!d.properties.name) return;
+                
+                const pathElement = d3.select(this);
+                let touchTimeout: number | null = null;
+                
+                // Only show label on long press (after 300ms), not on quick tap
+                touchTimeout = window.setTimeout(() => {
+                  showHoverLabel(d.properties.name);
+                  touchTimeout = null;
+                }, 300);
+                
+                const handleTouchEnd = () => {
+                  if (touchTimeout !== null) {
+                    clearTimeout(touchTimeout);
+                  }
+                  hideHoverLabel();
+                  pathElement.on("touchend.touchlabel", null);
+                  pathElement.on("touchcancel.touchlabel", null);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                  document.removeEventListener('touchcancel', handleTouchEnd);
+                };
+                
+                // Attach to element and document for reliability
+                pathElement.on("touchend.touchlabel", handleTouchEnd);
+                pathElement.on("touchcancel.touchlabel", handleTouchEnd);
+                document.addEventListener('touchend', handleTouchEnd, { once: true });
+                document.addEventListener('touchcancel', handleTouchEnd, { once: true });
+              })
               .style("pointer-events", 'auto');
           }
           
@@ -1402,17 +1453,58 @@ function App() {
                 event.stopImmediatePropagation();
                 if (event.type === "mousemove") return;
                 if (!d.properties.name) return;
+                
+                // Hide label and record click time to prevent showing immediately after
+                hideHoverLabel();
+                lastClickTimeRef.current = Date.now();
+                
                 handleLocationToggle(d.properties.name);
               })
               .on("mousedown", function(event: MouseEvent) {
                 event.stopPropagation();
+                // Record mousedown time to prevent label showing on click
+                lastClickTimeRef.current = Date.now();
+                hideHoverLabel();
               })
               .on("mouseenter", function(_event: MouseEvent, d: GeoFeature) {
+                // Don't show label on touch devices (mouse events can fire after touch on some browsers)
+                if (isTouchDeviceRef.current) return;
+                // Don't show label if we just clicked (within 800ms)
+                if (Date.now() - lastClickTimeRef.current < 800) return;
                 if (d.properties.name) {
                   showHoverLabel(d.properties.name);
                 }
               })
               .on("mouseleave", hideHoverLabel)
+              .on("touchstart", function(_event: TouchEvent, d: GeoFeature) {
+                if (!d.properties.name) return;
+                
+                const pathElement = d3.select(this);
+                let touchTimeout: number | null = null;
+                
+                // Only show label on long press (after 300ms), not on quick tap
+                touchTimeout = window.setTimeout(() => {
+                  showHoverLabel(d.properties.name);
+                  touchTimeout = null;
+                }, 300);
+                
+                const handleTouchEnd = () => {
+                  if (touchTimeout !== null) {
+                    clearTimeout(touchTimeout);
+                  }
+                  hideHoverLabel();
+                  pathElement.on("touchend.touchlabel", null);
+                  pathElement.on("touchcancel.touchlabel", null);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                  document.removeEventListener('touchcancel', handleTouchEnd);
+                };
+                
+                // Attach to element and document for reliability
+                pathElement.on("touchend.touchlabel", handleTouchEnd);
+                pathElement.on("touchcancel.touchlabel", handleTouchEnd);
+                document.addEventListener('touchend', handleTouchEnd, { once: true });
+                document.addEventListener('touchcancel', handleTouchEnd, { once: true });
+              })
               .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
           }
 
@@ -1683,6 +1775,11 @@ function App() {
                     e.preventDefault();
                     e.stopPropagation();
                     e.nativeEvent.stopImmediatePropagation();
+                    
+                    // Hide label and record click time to prevent showing immediately after
+                    hideHoverLabel();
+                    lastClickTimeRef.current = Date.now();
+                    
                     // Update DOM directly first
                     const listItem = d3.select(`#list-${normalizedName}`);
                     if (!listItem.empty()) {
@@ -1700,8 +1797,37 @@ function App() {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  onMouseEnter={() => showHoverLabel(name)}
+                  onMouseEnter={() => {
+                    // Don't show label on touch devices
+                    if (isTouchDeviceRef.current) return;
+                    showHoverLabel(name);
+                  }}
                   onMouseLeave={hideHoverLabel}
+                  onTouchStart={(e) => {
+                    // Only show label on long press (after 300ms), not on quick tap
+                    let touchTimeout: number | null = window.setTimeout(() => {
+                      showHoverLabel(name);
+                      touchTimeout = null;
+                    }, 300);
+                    
+                    const handleTouchEnd = () => {
+                      if (touchTimeout !== null) {
+                        clearTimeout(touchTimeout);
+                      }
+                      hideHoverLabel();
+                      document.removeEventListener('touchend', handleTouchEnd);
+                      document.removeEventListener('touchcancel', handleTouchEnd);
+                    };
+                    
+                    // Store handler on element for cleanup
+                    (e.currentTarget as HTMLElement).addEventListener('touchend', handleTouchEnd, { once: true });
+                    (e.currentTarget as HTMLElement).addEventListener('touchcancel', handleTouchEnd, { once: true });
+                    document.addEventListener('touchend', handleTouchEnd, { once: true });
+                    document.addEventListener('touchcancel', handleTouchEnd, { once: true });
+                  }}
+                  onTouchEnd={() => {
+                    hideHoverLabel();
+                  }}
                 >
                   <span>{name}</span>
                   <input
