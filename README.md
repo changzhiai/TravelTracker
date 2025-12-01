@@ -1,6 +1,6 @@
 # Travel Tracker
 
-An interactive world map application built with React, TypeScript, and D3.js for tracking visited countries, US states, European countries, Chinese provinces, and Indian states.
+An interactive world map application built with React, TypeScript, and D3.js for tracking visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks.
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://changzhiai.github.io/TravelTracker)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -33,6 +33,9 @@ The application is automatically deployed via GitHub Actions on every push to th
 
 #### 🇮🇳 India Map
 ![India Map](./public/India.png)
+
+#### 🏞️ US National Parks Map
+![US National Parks Map](./public/US_NPs.png)
 
 </div>
 
