@@ -1,5 +1,5 @@
 # Travel Tracker
-[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://changzhiai.github.io/TravelTracker)
+[![Live Website](https://img.shields.io/badge/Live-Website-brightgreen)](https://changzhiai.github.io/TravelTracker)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 An interactive world map application built with React, TypeScript, and D3.js for tracking visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks.
@@ -105,9 +105,6 @@ This project is configured for GitHub Pages deployment.
 1. Install gh-pages: `npm install --save-dev gh-pages`
 2. Update the `homepage` field in `package.json` with your GitHub username
 3. Run: `npm run deploy`
-
-
-> **Note**: These screenshots show the different map views available in the application. For the full interactive experience, visit the [live demo](#-live-demo).
 
 
 ## ⚠️ Data Accuracy Note
