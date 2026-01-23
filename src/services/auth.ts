@@ -1,7 +1,7 @@
 
 // Auth service using Background Database (Express + SQLite)
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 const CURRENT_USER_KEY = 'travel_tracker_current_user';
 
 export interface User {

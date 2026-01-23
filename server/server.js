@@ -1,6 +1,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const db = require('./database.js');
 
 const nodemailer = require('nodemailer');
@@ -11,7 +12,11 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-const path = require('path');
+
+// Serve static files from the Vite build directory
+app.use(express.static(path.join(__dirname, '../dist')));
+
+
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 // Email Transporter
@@ -211,6 +216,11 @@ app.post('/api/visits', (req, res) => {
             res.json({ message: 'Visits saved' });
         });
     });
+});
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 app.listen(PORT, () => {
