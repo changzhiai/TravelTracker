@@ -2861,7 +2861,7 @@ function App() {
       <div className="flex flex-1 space-x-4 relative pl-4 pr-0 md:pl-0 min-h-0">
         {/* Map Container */}
         <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-3 md:pb-6">
-          <div className="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-3">
+          <div className="flex items-center mb-4 border-b pb-3 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
               {/* Mobile List Toggle Button */}
@@ -2876,7 +2876,7 @@ function App() {
               </button>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1 bg-gradient-to-r from-slate-50 to-gray-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
                 <button
                   onClick={handleZoomIn}
@@ -2909,7 +2909,7 @@ function App() {
                 </button>
               </div>
 
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent hidden sm:block"></div>
 
               <div className="flex items-center space-x-2">
                 <button

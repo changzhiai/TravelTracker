@@ -31,6 +31,7 @@ This guide describes how to deploy the Travel Tracker application to an AWS EC2 
 3.  Connect via SSH:
     ```bash
     ssh -i path/to/travel-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
+    ssh -i bin/traveltracker-key.pem ubuntu@54.151.8.244
     ```
 
 ## Step 3: Install and Setup
