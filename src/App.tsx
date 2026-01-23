@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import JSZip from 'jszip';
+import { authService, type User } from './services/auth';
+import { SignInModal } from './components/SignInModal';
+import { ProfileModal } from './components/ProfileModal';
 import * as d3 from 'd3';
 import { geoMiller } from 'd3-geo-projection';
 import { feature } from 'topojson-client';
@@ -7,6 +11,11 @@ import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import logoImage from '/logo_tt.png';
 import nationalParksGeoJsonUrl from '../public/data/geojson/national-parks.geojson?url';
+import worldGeoJsonUrl from '../public/data/geojson/world.geojson?url';
+import usaStatesUrl from '../public/data/geojson/usa-states.json?url';
+import chinaProvincesUrl from '../public/data/geojson/china-provinces.json?url';
+import europeTopoJsonUrl from '../public/data/geojson/europe.topojson?url';
+import indiaStatesUrl from '../public/data/geojson/india-states.json?url';
 import './App.css';
 
 // Type definitions
@@ -37,12 +46,12 @@ interface TopoData extends Topology {
 // Constants
 // Using Natural Earth 110m data which includes ~177 countries (standard for most world maps)
 // Note: Different datasets have different counts. UN recognizes 195 countries total.
-const WORLD_GEOJSON_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
-const USA_STATES_URL = 'https://unpkg.com/us-atlas@3.0.0/states-10m.json';
+const WORLD_GEOJSON_URL = worldGeoJsonUrl;
+const USA_STATES_URL = usaStatesUrl;
 const NATIONAL_PARKS_GEOJSON_URL = nationalParksGeoJsonUrl;
-const CHINA_PROVINCES_URL = 'https://raw.githubusercontent.com/junwang23/geoCN/refs/heads/master/geojson/china_provinces.json';
-const EUROPE_TOPJSON_URL = 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/refs/heads/master/TopoJSON/europe.topojson';
-const INDIA_STATES_URL = 'https://raw.githubusercontent.com/adarshbiradar/maps-geojson/refs/heads/master/india.json';
+const CHINA_PROVINCES_URL = chinaProvincesUrl;
+const EUROPE_TOPJSON_URL = europeTopoJsonUrl;
+const INDIA_STATES_URL = indiaStatesUrl;
 
 const normalizeLocationName = (name: string) =>
   name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
@@ -50,7 +59,15 @@ const normalizeLocationName = (name: string) =>
 function App() {
   // State management
   const [currentScope, setCurrentScope] = useState<Scope>('world');
-  const [activeLocations, setActiveLocations] = useState<Set<string>>(new Set());
+  const [allActiveLocations, setAllActiveLocations] = useState<Record<Scope, Set<string>>>({
+    world: new Set(),
+    usa: new Set(),
+    usaParks: new Set(),
+    europe: new Set(),
+    china: new Set(),
+    india: new Set(),
+  });
+  const activeLocations = allActiveLocations[currentScope];
   const [showLabels, setShowLabels] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +79,12 @@ function App() {
   const [chinaProvinceFeatures, setChinaProvinceFeatures] = useState<GeoFeature[]>([]);
   const [indiaStateFeatures, setIndiaStateFeatures] = useState<GeoFeature[]>([]);
   const [isScopeDropdownOpen, setIsScopeDropdownOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileInitialTab, setProfileInitialTab] = useState<'stats' | 'edit'>('stats');
+  const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
+  const saveDropdownRef = useRef<HTMLDivElement>(null);
 
   // Refs for D3.js
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -81,33 +104,33 @@ function App() {
   const scopeDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Computed values
-  const currentFeatures = 
+  const currentFeatures =
     currentScope === 'world' ? worldCountryFeatures :
-    currentScope === 'usa' ? usStateFeatures :
-    currentScope === 'usaParks' ? usStateFeatures :
-    currentScope === 'europe' ? europeCountryFeatures :
-    currentScope === 'china' ? chinaProvinceFeatures :
-    indiaStateFeatures;
+      currentScope === 'usa' ? usStateFeatures :
+        currentScope === 'usaParks' ? usStateFeatures :
+          currentScope === 'europe' ? europeCountryFeatures :
+            currentScope === 'china' ? chinaProvinceFeatures :
+              indiaStateFeatures;
 
   const selectableFeatures = currentScope === 'usaParks'
     ? usNationalParkFeatures
     : currentFeatures;
-  
-  const locationTypeLabel = 
+
+  const locationTypeLabel =
     currentScope === 'world' ? 'Countries' :
-    currentScope === 'usa' ? 'States' :
-    currentScope === 'usaParks' ? 'National Parks' :
-    currentScope === 'europe' ? 'Countries' :
-    currentScope === 'china' ? 'Provinces' :
-    'States';
-  
-  const totalTypeLabel = 
+      currentScope === 'usa' ? 'States' :
+        currentScope === 'usaParks' ? 'National Parks' :
+          currentScope === 'europe' ? 'Countries' :
+            currentScope === 'china' ? 'Provinces' :
+              'States';
+
+  const totalTypeLabel =
     currentScope === 'world' ? '% World' :
-    currentScope === 'usa' ? '% USA' :
-    currentScope === 'usaParks' ? '% Parks' :
-    currentScope === 'europe' ? '% Europe' :
-    currentScope === 'china' ? '% China' :
-    '% India';
+      currentScope === 'usa' ? '% USA' :
+        currentScope === 'usaParks' ? '% Parks' :
+          currentScope === 'europe' ? '% Europe' :
+            currentScope === 'china' ? '% China' :
+              '% India';
 
   const scopeOptions: ScopeOption[] = [
     { value: 'world', label: 'World', iconType: 'emoji', icon: '🌍' },
@@ -119,33 +142,33 @@ function App() {
   ];
 
   const currentScopeOption = scopeOptions.find(option => option.value === currentScope) ?? scopeOptions[0];
-  
-  const mapTitle = 
+
+  const mapTitle =
     currentScope === 'world' ? 'World Map' :
-    currentScope === 'usa' ? 'USA Map' :
-    currentScope === 'usaParks' ? 'US National Parks Map' :
-    currentScope === 'europe' ? 'Europe Map' :
-    currentScope === 'china' ? 'China Map' :
-    'India Map';
-  
-  const listTitle = 
+      currentScope === 'usa' ? 'USA Map' :
+        currentScope === 'usaParks' ? 'US National Parks Map' :
+          currentScope === 'europe' ? 'Europe Map' :
+            currentScope === 'china' ? 'China Map' :
+              'India Map';
+
+  const listTitle =
     currentScope === 'world' ? 'Countries List' :
-    currentScope === 'usa' ? 'States List' :
-    currentScope === 'usaParks' ? 'National Parks List' :
-    currentScope === 'europe' ? 'Countries List' :
-    currentScope === 'china' ? 'Provinces List' :
-    'States List';
-  
+      currentScope === 'usa' ? 'States List' :
+        currentScope === 'usaParks' ? 'National Parks List' :
+          currentScope === 'europe' ? 'Countries List' :
+            currentScope === 'china' ? 'Provinces List' :
+              'States List';
+
   const locationsCount = activeLocations.size;
-  const totalReference = 
+  const totalReference =
     currentScope === 'world' ? worldCountryFeatures.length :
-    currentScope === 'usa' ? usStateFeatures.length :
-    currentScope === 'usaParks' ? usNationalParkFeatures.length :
-    currentScope === 'europe' ? europeCountryFeatures.length :
-    currentScope === 'china' ? chinaProvinceFeatures.length :
-    indiaStateFeatures.length;
-  const percentage = totalReference > 0 
-    ? ((locationsCount / totalReference) * 100).toFixed(1) 
+      currentScope === 'usa' ? usStateFeatures.length :
+        currentScope === 'usaParks' ? usNationalParkFeatures.length :
+          currentScope === 'europe' ? europeCountryFeatures.length :
+            currentScope === 'china' ? chinaProvinceFeatures.length :
+              indiaStateFeatures.length;
+  const percentage = totalReference > 0
+    ? ((locationsCount / totalReference) * 100).toFixed(1)
     : '0.0';
 
   const renderScopeIcon = (option: ScopeOption) => {
@@ -243,6 +266,126 @@ function App() {
     };
   }, [isScopeDropdownOpen]);
 
+  // Notification system
+  const showNotification = useCallback((message: string, type: NotificationType = 'success') => {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    const color = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+    const icon = type === 'success'
+      ? '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+      : '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+    const notification = document.createElement('div');
+    notification.className = `flex items-center ${color} text-white text-sm font-bold px-4 py-3 rounded-lg shadow-lg mb-3 transform translate-x-full transition-all duration-300`;
+    notification.innerHTML = icon + `<span>${message}</span>`;
+
+    container.prepend(notification);
+
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 10);
+
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 3000);
+  }, []);
+
+  // Auth Initialization
+  useEffect(() => {
+    const savedUser = authService.getCurrentUser();
+    if (savedUser) {
+      setUser(savedUser);
+
+      // Check for pending welcome message
+      const welcomeUser = localStorage.getItem('travel_tracker_welcome_user');
+      if (welcomeUser === savedUser.username) {
+        // Use a small timeout to ensure notification system is ready or map is rendering
+        setTimeout(() => showNotification(`Welcome back, ${savedUser.username}!`), 500);
+        localStorage.removeItem('travel_tracker_welcome_user');
+      }
+    }
+
+    // Check for pending logout message
+    if (localStorage.getItem('travel_tracker_logout_msg')) {
+      setTimeout(() => showNotification('Logged out successfully.'), 500);
+      localStorage.removeItem('travel_tracker_logout_msg');
+    }
+  }, [showNotification]);
+
+  // Ref to track which scope the current activeLocations belongs to
+  const loadedScopeRef = useRef<Scope | null>(null);
+
+  // Load user data when scope or user changes
+  useEffect(() => {
+    if (user) {
+      // If we've already loaded this scope for this user, don't reload
+      // This prevents the "double refresh" effect when switching tabs or on initial load
+      // However, we DO need to load if it's the first time for this scope
+
+      // We can check if the current activeLocations for this scope is empty (initial state) 
+      // AND we haven't marked this scope as loaded yet.
+
+      // Load ALL scopes for the user at once to ensure CSV export works fully
+      // even if the user hasn't navigated to every tab in this session.
+      const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
+
+      Promise.all(scopes.map(scope => authService.loadLocations(user.username, scope)))
+        .then(results => {
+          setAllActiveLocations(prev => {
+            const next = { ...prev };
+            let hasChanges = false;
+
+            scopes.forEach((scope, index) => {
+              const savedLocations = results[index];
+              const currentSet = prev[scope];
+
+              // Only update if different to avoid re-renders
+              if (currentSet.size !== savedLocations.size ||
+                ![...savedLocations].every(x => currentSet.has(x))) {
+                next[scope] = savedLocations;
+                hasChanges = true;
+              }
+            });
+
+            return hasChanges ? next : prev;
+          });
+
+          // Mark that we've loaded user data
+          loadedScopeRef.current = currentScope;
+        });
+    } else {
+      loadedScopeRef.current = null;
+      // Visitor mode: Keep existing selections in memory when switching scopes
+    }
+  }, [user, currentScope]);
+
+  // Save user data when selections change
+  useEffect(() => {
+    // Only save if we have a user, locations, AND the data currently loaded 
+    // actually belongs to the current scope (prevent saving during transitions)
+    if (user && activeLocations && loadedScopeRef.current === currentScope) {
+      authService.saveLocations(user.username, currentScope, activeLocations);
+    }
+  }, [user, currentScope, activeLocations]);
+
+  const handleLoginSuccess = (username: string) => {
+    // Persist welcome message intent
+    localStorage.setItem('travel_tracker_welcome_user', username);
+    // Reload immediately to get a fresh state - avoids "double refresh" visual
+    window.location.reload();
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    // Persist logout message intent
+    localStorage.setItem('travel_tracker_logout_msg', 'true');
+    window.location.reload();
+  };
+
   // Show location name notification
   const showLocationName = useCallback((locationName: string) => {
     const container = document.getElementById('notification-container');
@@ -279,32 +422,7 @@ function App() {
   }, []);
 
   // Notification system
-  const showNotification = useCallback((message: string, type: NotificationType = 'success') => {
-    const container = document.getElementById('notification-container');
-    if (!container) return;
 
-    const color = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
-    const icon = type === 'success' 
-      ? '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
-      : '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-    
-    const notification = document.createElement('div');
-    notification.className = `flex items-center ${color} text-white text-sm font-bold px-4 py-3 rounded-lg shadow-lg mb-3 transform translate-x-full transition-all duration-300`;
-    notification.innerHTML = icon + `<span>${message}</span>`;
-    
-    container.prepend(notification);
-
-    setTimeout(() => {
-      notification.style.transform = 'translateX(0)';
-    }, 10);
-
-    setTimeout(() => {
-      notification.style.transform = 'translateX(100%)';
-      setTimeout(() => {
-        notification.remove();
-      }, 300);
-    }, 3000);
-  }, []);
 
   // Load world data
   const loadWorldData = useCallback(async () => {
@@ -343,10 +461,10 @@ function App() {
       const topoData = await d3.json<TopoData>(USA_STATES_URL);
       if (!topoData) throw new Error('Failed to load USA data');
       const featureCollection = feature(topoData, topoData.objects.states);
-      const features = (featureCollection.type === 'FeatureCollection' 
-        ? featureCollection.features 
+      const features = (featureCollection.type === 'FeatureCollection'
+        ? featureCollection.features
         : [featureCollection]) as GeoFeature[];
-      
+
       // List of 50 US states (excluding territories like DC, Puerto Rico, etc.)
       const usStates = new Set([
         'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
@@ -358,13 +476,13 @@ function App() {
         'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
         'Wisconsin', 'Wyoming'
       ]);
-      
+
       // Filter to only include the 50 states
       const filteredFeatures = features.filter(d => {
         const name = d.properties.name;
         return name && usStates.has(name);
       });
-      
+
       setUsStateFeatures(filteredFeatures);
       console.log(`USA states map data loaded successfully. Found ${filteredFeatures.length} states.`);
     } catch (error) {
@@ -416,18 +534,18 @@ function App() {
       console.log('Loading Europe data from:', EUROPE_TOPJSON_URL);
       const topoData = await d3.json<Topology>(EUROPE_TOPJSON_URL);
       if (!topoData) throw new Error('Failed to load Europe TopoJSON data');
-      
+
       console.log('TopoJSON data loaded, objects:', Object.keys(topoData.objects));
-      
+
       // Convert TopoJSON to GeoJSON
       const europeObject = topoData.objects.europe as GeometryCollection;
       if (!europeObject) throw new Error('Europe object not found in TopoJSON');
-      
+
       const geoJsonData = feature(topoData, europeObject);
       if (!geoJsonData || !geoJsonData.features) throw new Error('Failed to convert TopoJSON to GeoJSON');
-      
+
       console.log('Converted to GeoJSON, total features:', geoJsonData.features.length);
-      
+
       // Process the features - ensure name property exists
       const features = (geoJsonData.features as GeoFeature[])
         .filter(d => {
@@ -446,13 +564,13 @@ function App() {
           }
           return feature as GeoFeature;
         });
-      
+
       console.log(`Europe map data loaded successfully. Found ${features.length} countries.`);
       if (features.length > 0) {
         console.log('Sample country:', features[0].properties.name);
         console.log('Sample geometry type:', features[0].geometry.type);
       }
-      
+
       setEuropeCountryFeatures(features);
     } catch (error) {
       console.error("Error loading Europe map data:", error);
@@ -469,9 +587,9 @@ function App() {
       console.log('Loading China provinces data from:', CHINA_PROVINCES_URL);
       const geoJsonData = await d3.json<FeatureCollection>(CHINA_PROVINCES_URL);
       if (!geoJsonData) throw new Error('Failed to load China provinces data');
-      
+
       console.log('Raw data loaded, total features:', geoJsonData.features.length);
-      
+
       // Process the features - this data source already has English names
       const features = (geoJsonData.features as GeoFeature[])
         .filter(d => {
@@ -490,13 +608,13 @@ function App() {
           }
           return feature as GeoFeature;
         });
-      
+
       console.log(`China provinces map data loaded successfully. Found ${features.length} provinces.`);
       if (features.length > 0) {
         console.log('Sample province:', features[0].properties.name);
         console.log('Sample geometry type:', features[0].geometry.type);
       }
-      
+
       setChinaProvinceFeatures(features);
     } catch (error) {
       console.error("Error loading China provinces map data:", error);
@@ -513,21 +631,21 @@ function App() {
       console.log('Loading India states data from:', INDIA_STATES_URL);
       const geoJsonData = await d3.json<FeatureCollection>(INDIA_STATES_URL);
       if (!geoJsonData) throw new Error('Failed to load India states data');
-      
+
       console.log('Raw data loaded, total features:', geoJsonData.features.length);
-      
+
       // Process features - this data already has state-level boundaries
       // First, separate the two union territories that need to be merged
       let dadraFeature: GeoFeature | null = null;
       let damanFeature: GeoFeature | null = null;
-      
+
       const processedFeatures = (geoJsonData.features as GeoFeature[])
         .filter(d => {
           if (!d.properties || !d.properties.st_nm) return false;
           if (!d.geometry) return false;
           const geom = d.geometry;
           if (geom.type === 'GeometryCollection') return false;
-          
+
           const stateName = String(d.properties.st_nm || '');
           // Check if this is one of the territories to merge
           if (stateName === 'Dadra and Nagar Haveli') {
@@ -544,7 +662,7 @@ function App() {
             } as GeoFeature;
             return false; // Don't include in main list yet
           }
-          
+
           return true;
         })
         .map(feature => {
@@ -558,13 +676,13 @@ function App() {
             }
           } as GeoFeature;
         });
-      
+
       // Merge Dadra and Nagar Haveli with Daman and Diu if both exist
       if (dadraFeature && damanFeature) {
         // Store in local variables with explicit types to help TypeScript
         const dadra: GeoFeature = dadraFeature;
         const daman: GeoFeature = damanFeature;
-        
+
         try {
           // Use turf.union to properly merge the geometries
           const merged = union(dadra as any, daman as any);
@@ -586,24 +704,24 @@ function App() {
           // Fallback: combine as MultiPolygon
           const dadraGeom = dadra.geometry;
           const damanGeom = daman.geometry;
-          
-          const dadraCoords = dadraGeom.type === 'Polygon' 
+
+          const dadraCoords = dadraGeom.type === 'Polygon'
             ? [dadraGeom.coordinates]
             : dadraGeom.type === 'MultiPolygon'
-            ? dadraGeom.coordinates
-            : [];
-          
+              ? dadraGeom.coordinates
+              : [];
+
           const damanCoords = damanGeom.type === 'Polygon'
             ? [damanGeom.coordinates]
             : damanGeom.type === 'MultiPolygon'
-            ? damanGeom.coordinates
-            : [];
-          
+              ? damanGeom.coordinates
+              : [];
+
           const mergedGeometry: any = {
             type: 'MultiPolygon',
             coordinates: [...dadraCoords, ...damanCoords]
           };
-          
+
           const mergedFeature: GeoFeature = {
             type: 'Feature',
             properties: {
@@ -620,14 +738,14 @@ function App() {
         // If only Daman exists, keep it as is
         processedFeatures.push(damanFeature);
       }
-      
+
       const features = processedFeatures;
-      
+
       console.log(`India states map data loaded successfully. Found ${features.length} states.`);
       if (features.length > 0) {
         console.log('Sample state:', features[0].properties.name);
       }
-      
+
       setIndiaStateFeatures(features);
     } catch (error) {
       console.error("Error loading India states map data:", error);
@@ -738,20 +856,20 @@ function App() {
 
     if (showLabelsRef.current) {
       // Get currently selected locations
-      const selectedFeatures = selectableFeatures.filter(d => 
+      const selectedFeatures = selectableFeatures.filter(d =>
         activeLocationsRef.current.has(d.properties.name)
       );
 
       const selection = labelGroupRef.current.selectAll<SVGTextElement, GeoFeature>(".map-label")
         .data(selectedFeatures, (d: GeoFeature) => d.properties.name);
-      
+
       // Enter: add new labels
       const enter = selection.enter()
         .append("text")
         .attr("class", "map-label")
         .attr("opacity", 0)
         .text(d => d.properties.name);
-      
+
       // Update: merge enter and update selections
       enter.merge(selection)
         .attr("transform", d => {
@@ -761,7 +879,7 @@ function App() {
         .transition()
         .duration(300)
         .attr("opacity", 1);
-      
+
       // Exit: remove labels for deselected locations
       selection.exit()
         .transition()
@@ -803,7 +921,7 @@ function App() {
     container.addEventListener('selectstart', preventSelection, true);
     container.addEventListener('dragstart', preventSelection, true);
     container.addEventListener('contextmenu', preventSelection, true);
-    
+
     // Prevent text selection on mouse events
     container.addEventListener('mousedown', (e) => {
       // Prevent text selection on long press
@@ -812,28 +930,28 @@ function App() {
         e.stopPropagation();
       }
     }, true);
-    
+
     // Prevent text selection on touch events (mobile)
     // Only prevent on text elements, not on paths (to allow dragging)
     const preventTouchSelection = (e: TouchEvent) => {
       const target = e.target as Element;
       if (target) {
         // Prevent selection on text elements or their parents
-        if (target.tagName === 'text' || 
-            target.closest('text') || 
-            target.closest('.hover-label') ||
-            target.closest('.hover-label-bg') ||
-            target.classList.contains('hover-label') ||
-            target.classList.contains('hover-label-bg')) {
+        if (target.tagName === 'text' ||
+          target.closest('text') ||
+          target.closest('.hover-label') ||
+          target.closest('.hover-label-bg') ||
+          target.classList.contains('hover-label') ||
+          target.classList.contains('hover-label-bg')) {
           e.preventDefault();
           e.stopPropagation();
           return false;
         }
       }
     };
-    
+
     container.addEventListener('touchstart', preventTouchSelection, { passive: false, capture: true });
-    
+
     // Prevent text selection on the SVG element
     const svg = svgRef.current;
     if (svg) {
@@ -842,7 +960,7 @@ function App() {
       svg.addEventListener('contextmenu', preventSelection, true);
       svg.addEventListener('touchstart', preventTouchSelection, { passive: false, capture: true });
     }
-    
+
     // Add document-level handler to prevent selection when touching map area
     const handleDocumentSelectStart = (e: Event) => {
       const target = e.target as Node;
@@ -852,7 +970,7 @@ function App() {
         return false;
       }
     };
-    
+
     // More aggressive handler for mobile - prevent selection on any touch within map
     const handleDocumentTouch = (e: TouchEvent) => {
       const target = e.target as Node;
@@ -870,7 +988,7 @@ function App() {
         }
       }
     };
-    
+
     document.addEventListener('selectstart', handleDocumentSelectStart, true);
     document.addEventListener('touchstart', handleDocumentTouch, { passive: false, capture: true });
 
@@ -894,30 +1012,30 @@ function App() {
   const showHoverLabel = useCallback((locationName: string, isTouch: boolean = false) => {
     // Don't show label if we just clicked (within 800ms)
     if (Date.now() - lastClickTimeRef.current < 800) return;
-    
+
     // Clear any pending hide timeout
     if (hoverLabelTimeoutRef.current) {
       clearTimeout(hoverLabelTimeoutRef.current);
       hoverLabelTimeoutRef.current = null;
     }
-    
+
     // If already showing the same label, don't recreate
     if (currentHoverNameRef.current === locationName) return;
     currentHoverNameRef.current = locationName;
-    
+
     if (!hoverLabelGroupRef.current || !pathRef.current || !svgRef.current || !mapContainerRef.current) return;
-    
+
     let x: number, y: number;
-    
+
     if (isTouch) {
       // Position at absolute bottom left for touch devices
       // Use viewBox coordinates since hoverLabelGroup is not transformed
       const svg = svgRef.current;
       const viewBox = svg.viewBox.baseVal;
-      
+
       // Position at most left, with padding only from bottom
       const paddingY = 15;
-      
+
       x = 0;
       y = viewBox.height - paddingY;
     } else {
@@ -927,9 +1045,9 @@ function App() {
       const centroid = pathRef.current.centroid(feature);
       [x, y] = centroid;
     }
-    
+
     hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg, .hover-label-shadow").remove();
-    
+
     // Create shadow filter for depth
     let defsSelection = d3.select(svgRef.current).select<SVGDefsElement>("defs");
     if (defsSelection.empty()) {
@@ -959,14 +1077,14 @@ function App() {
       feMerge.append("feMergeNode")
         .attr("in", "SourceGraphic");
     }
-    
+
     const paddingX = isTouch ? 12 : 10;
     const paddingY = isTouch ? 8 : 6;
-    
+
     // For touch, position entire frame (background) at leftmost (x=0)
     // Text will be positioned inside with padding
     const textY = y;
-    
+
     // First create background rectangle at leftmost position
     if (isTouch) {
       // For touch, we need to estimate width first, then position text inside
@@ -979,10 +1097,10 @@ function App() {
         .attr("font-weight", "600")
         .attr("font-family", "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif")
         .text(locationName);
-      
+
       const tempBbox = (tempText.node() as SVGTextElement)?.getBBox();
       tempText.remove();
-      
+
       if (tempBbox) {
         // Create background at x=0
         const rect = hoverLabelGroupRef.current.insert("rect", ".hover-label")
@@ -991,7 +1109,7 @@ function App() {
           .attr("y", textY - tempBbox.height / 2 - paddingY)
           .attr("width", tempBbox.width + paddingX * 2)
           .attr("height", tempBbox.height + paddingY * 2);
-        
+
         // Position text inside with padding on both sides
         const label = hoverLabelGroupRef.current.append("text")
           .attr("class", "hover-label")
@@ -1013,7 +1131,7 @@ function App() {
           .on("selectstart", (e) => e.preventDefault())
           .on("dragstart", (e) => e.preventDefault())
           .text(locationName);
-        
+
         // Add event handlers to prevent text selection on the text element
         const labelNode = label.node();
         if (labelNode) {
@@ -1021,30 +1139,30 @@ function App() {
           labelNode.addEventListener('mousedown', (e) => e.preventDefault(), false);
           labelNode.addEventListener('dragstart', (e) => e.preventDefault(), false);
         }
-        
+
         // Update background with actual text bbox and add styling
         const bbox = (label.node() as SVGTextElement)?.getBBox();
         if (bbox) {
           rect.attr("x", 0)  // Ensure background is always at leftmost position
-              .attr("width", bbox.width + paddingX * 2)
-              .attr("height", bbox.height + paddingY * 2)
-              .attr("y", bbox.y - paddingY)
-              .attr("fill", "rgba(255, 255, 255, 0.98)")
-              .attr("stroke", "rgba(0, 0, 0, 0.1)")
-              .attr("stroke-width", "1")
-              .attr("rx", "8")
-              .attr("ry", "8")
-              .attr("pointer-events", "none")
-              .attr("filter", "url(#label-shadow)")
-              .style("opacity", 1)
-              .style("user-select", "none")
-              .style("-webkit-user-select", "none")
-              .style("-moz-user-select", "none")
-              .style("-ms-user-select", "none")
-              .on("mousedown", (e) => e.preventDefault())
-              .on("selectstart", (e) => e.preventDefault())
-              .on("dragstart", (e) => e.preventDefault());
-          
+            .attr("width", bbox.width + paddingX * 2)
+            .attr("height", bbox.height + paddingY * 2)
+            .attr("y", bbox.y - paddingY)
+            .attr("fill", "rgba(255, 255, 255, 0.98)")
+            .attr("stroke", "rgba(0, 0, 0, 0.1)")
+            .attr("stroke-width", "1")
+            .attr("rx", "8")
+            .attr("ry", "8")
+            .attr("pointer-events", "none")
+            .attr("filter", "url(#label-shadow)")
+            .style("opacity", 1)
+            .style("user-select", "none")
+            .style("-webkit-user-select", "none")
+            .style("-moz-user-select", "none")
+            .style("-ms-user-select", "none")
+            .on("mousedown", (e) => e.preventDefault())
+            .on("selectstart", (e) => e.preventDefault())
+            .on("dragstart", (e) => e.preventDefault());
+
           // Add event handlers to prevent text selection on the background element
           const rectNode = rect.node();
           if (rectNode) {
@@ -1052,7 +1170,7 @@ function App() {
             rectNode.addEventListener('mousedown', (e) => e.preventDefault(), false);
             rectNode.addEventListener('dragstart', (e) => e.preventDefault(), false);
           }
-          
+
           // Add gradient if not exists
           if (defsSelection.select("#label-gradient").empty()) {
             const gradient = defsSelection.append("linearGradient")
@@ -1072,7 +1190,7 @@ function App() {
           }
           rect.attr("fill", "url(#label-gradient)");
         }
-        
+
         // Add event handlers to the hover label group to prevent text selection
         if (hoverLabelGroupRef.current) {
           const groupNode = hoverLabelGroupRef.current.node();
@@ -1110,7 +1228,7 @@ function App() {
         .on("selectstart", (e) => e.preventDefault())
         .on("dragstart", (e) => e.preventDefault())
         .text(locationName);
-      
+
       // Add event handlers to prevent text selection on the text element
       const labelNode = label.node();
       if (labelNode) {
@@ -1118,7 +1236,7 @@ function App() {
         labelNode.addEventListener('mousedown', (e) => e.preventDefault(), false);
         labelNode.addEventListener('dragstart', (e) => e.preventDefault(), false);
       }
-      
+
       const bbox = (label.node() as SVGTextElement)?.getBBox();
       if (bbox) {
         const rect = hoverLabelGroupRef.current.insert("rect", "text")
@@ -1139,7 +1257,7 @@ function App() {
           .style("-webkit-user-select", "none")
           .style("-moz-user-select", "none")
           .style("-ms-user-select", "none");
-        
+
         // Add subtle gradient for depth
         if (defsSelection.select("#label-gradient").empty()) {
           const gradient = defsSelection.append("linearGradient")
@@ -1168,9 +1286,9 @@ function App() {
     if (hoverLabelTimeoutRef.current) {
       clearTimeout(hoverLabelTimeoutRef.current);
     }
-    
+
     // Add small delay to prevent flickering when moving between items
-    hoverLabelTimeoutRef.current = setTimeout(() => {
+    hoverLabelTimeoutRef.current = window.setTimeout(() => {
       if (!hoverLabelGroupRef.current) return;
       currentHoverNameRef.current = null;
       hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
@@ -1182,9 +1300,9 @@ function App() {
   const handleLocationToggle = useCallback((locationName: string) => {
     // Show location name notification
     showLocationName(locationName);
-    
+
     const normalizedName = locationName.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-    
+
     // Update DOM directly first (immediate visual feedback) - no React re-render
     const targetGroups = currentScope === 'usaParks'
       ? [parkGroupRef.current]
@@ -1198,7 +1316,7 @@ function App() {
         pathElement.classed('country-highlight', !isCurrentlySelected);
       }
     });
-    
+
     const listItem = d3.select(`#list-${normalizedName}`);
     if (!listItem.empty()) {
       const isCurrentlySelected = listItem.classed('selected');
@@ -1208,24 +1326,25 @@ function App() {
         checkbox.property('checked', !isCurrentlySelected);
       }
     }
-    
+
     // Update state asynchronously using a ref to track without causing re-render
     // Use a longer delay to batch updates and prevent visual refresh
     setTimeout(() => {
-      setActiveLocations(prev => {
-        const newSet = new Set(prev);
+      setAllActiveLocations(prev => {
+        const currentSet = prev[currentScope];
+        const newSet = new Set(currentSet);
         const isSelected = newSet.has(locationName);
-        
+
         if (isSelected) {
           newSet.delete(locationName);
         } else {
           newSet.add(locationName);
         }
-        
+
         // Update labels if needed (only if labels are shown)
         if (showLabels && labelGroupRef.current && pathRef.current) {
-        const selectedFeatures = selectableFeatures.filter(d => newSet.has(d.properties.name));
-          
+          const selectedFeatures = selectableFeatures.filter(d => newSet.has(d.properties.name));
+
           labelGroupRef.current.selectAll<SVGTextElement, GeoFeature>(".map-label")
             .data(selectedFeatures, (d: GeoFeature) => d.properties.name)
             .join(
@@ -1245,10 +1364,13 @@ function App() {
                 .remove()
             );
         }
-        
-        return newSet;
+
+        return {
+          ...prev,
+          [currentScope]: newSet
+        };
       });
-      
+
       // Update labels if they're enabled
       if (showLabelsRef.current) {
         setTimeout(() => renderLabels(), 0);
@@ -1261,11 +1383,10 @@ function App() {
   const handleScopeSelection = useCallback(async (scope: Scope) => {
     if (scope === currentScope) return;
 
-    // Clear active locations
-    setActiveLocations(new Set());
-    
+    // Do NOT clear active locations - keep selection in memory
+
     setIsLoading(true);
-    
+
     // Load data based on scope
     if (scope === 'usa' || scope === 'usaParks') {
       await loadUSAData();
@@ -1279,7 +1400,7 @@ function App() {
     } else if (scope === 'india') {
       await loadIndiaData();
     }
-    
+
     setIsLoading(false);
 
     // Update scope - the useEffect will handle all rendering with proper transform
@@ -1291,165 +1412,375 @@ function App() {
     setIsScopeDropdownOpen(false);
   }, [handleScopeSelection]);
 
-  // Save map as PNG
-  const saveMapAsPNG = useCallback(() => {
-    if (!svgRef.current || !mapContainerRef.current || !mapGroupRef.current) return;
-
-    try {
-      const svgNode = svgRef.current;
-      const container = mapContainerRef.current;
-      const mapGroup = mapGroupRef.current.node();
-      
-      if (!mapGroup) return;
-      
-      // Get bounding box of the actual map content (tight crop)
-      const mapBounds = (mapGroup as SVGGElement).getBBox();
-      
-      // Add small padding (2% of width/height)
-      const padding = Math.max(mapBounds.width, mapBounds.height) * 0.02;
-      const cropX = Math.max(0, mapBounds.x - padding);
-      const cropY = Math.max(0, mapBounds.y - padding);
-      const cropWidth = mapBounds.width + (padding * 2);
-      const cropHeight = mapBounds.height + (padding * 2);
-      
-      // Get container dimensions for reference
-      const containerWidth = container.clientWidth || container.offsetWidth;
-      const containerHeight = container.clientHeight || container.offsetHeight;
-      
-      if (containerWidth === 0 || containerHeight === 0 || cropWidth === 0 || cropHeight === 0) {
-        showNotification('Map container has no dimensions. Please wait for the map to load.', 'error');
+  // Generate map image (returns Promise with data)
+  const generateMapImage = useCallback((scopeOverride?: Scope): Promise<{ dataUrl: string, filename: string } | null> => {
+    return new Promise((resolve) => {
+      if (!svgRef.current || !mapContainerRef.current || !mapGroupRef.current) {
+        resolve(null);
         return;
       }
+      try {
+        const svgNode = svgRef.current;
+        const container = mapContainerRef.current;
+        const mapGroup = mapGroupRef.current.node();
 
-      // Clone the SVG to avoid modifying the original
-      const clonedSvg = svgNode.cloneNode(true) as SVGSVGElement;
-      
-      // Calculate new viewBox for tight crop
-      const newViewBox = `${cropX} ${cropY} ${cropWidth} ${cropHeight}`;
-      
-      // Set explicit dimensions and viewBox on the cloned SVG
-      clonedSvg.setAttribute('width', cropWidth.toString());
-      clonedSvg.setAttribute('height', cropHeight.toString());
-      clonedSvg.setAttribute('viewBox', newViewBox);
-      clonedSvg.removeAttribute('style'); // Remove any inline styles that might interfere
-      
-      // Ensure all paths have explicit fill colors (not relying on CSS classes)
-      // Get paths from original SVG to read computed styles
-      const originalPaths = svgNode.querySelectorAll('.country-path');
-      const clonedPaths = clonedSvg.querySelectorAll('.country-path');
-      
-      originalPaths.forEach((originalPath, index) => {
-        const clonedPath = clonedPaths[index] as SVGPathElement;
-        if (!clonedPath) return;
-        
-        // Get computed style from original element
-        const computedStyle = window.getComputedStyle(originalPath as Element);
-        const fill = computedStyle.fill;
-        const stroke = computedStyle.stroke;
-        const strokeWidth = computedStyle.strokeWidth;
-        
-        // Set explicit attributes on cloned path
-        if (fill && fill !== 'none' && fill !== 'transparent' && fill !== 'rgba(0, 0, 0, 0)') {
-          clonedPath.setAttribute('fill', fill);
-        } else {
-          // Check if it's highlighted
-          if (originalPath.classList.contains('country-highlight')) {
-            clonedPath.setAttribute('fill', '#10b981'); // emerald-500
-            clonedPath.setAttribute('stroke', '#047857'); // darker emerald
-            clonedPath.setAttribute('stroke-width', '0.75');
+        if (!mapGroup) {
+          resolve(null);
+          return;
+        }
+
+        // Get bounding box of the actual map content (tight crop)
+        const mapBounds = (mapGroup as SVGGElement).getBBox();
+
+        // Add small padding (2% of width/height)
+        const padding = Math.max(mapBounds.width, mapBounds.height) * 0.02;
+        const cropX = Math.max(0, mapBounds.x - padding);
+        const cropY = Math.max(0, mapBounds.y - padding);
+        const cropWidth = mapBounds.width + (padding * 2);
+        const cropHeight = mapBounds.height + (padding * 2);
+
+        // Get container dimensions for reference
+        const containerWidth = container.clientWidth || container.offsetWidth;
+        const containerHeight = container.clientHeight || container.offsetHeight;
+
+        if (containerWidth === 0 || containerHeight === 0 || cropWidth === 0 || cropHeight === 0) {
+          console.warn('Map container has no dimensions.');
+          resolve(null);
+          return;
+        }
+
+        // Clone the SVG to avoid modifying the original
+        const clonedSvg = svgNode.cloneNode(true) as SVGSVGElement;
+
+        // Calculate new viewBox for tight crop
+        const newViewBox = `${cropX} ${cropY} ${cropWidth} ${cropHeight}`;
+
+        // Set explicit dimensions and viewBox on the cloned SVG
+        clonedSvg.setAttribute('width', cropWidth.toString());
+        clonedSvg.setAttribute('height', cropHeight.toString());
+        clonedSvg.setAttribute('viewBox', newViewBox);
+        clonedSvg.removeAttribute('style'); // Remove any inline styles that might interfere
+
+        // Ensure all paths have explicit fill colors (not relying on CSS classes)
+        // Get paths from original SVG to read computed styles
+        const originalPaths = svgNode.querySelectorAll('.country-path, .park-path');
+        const clonedPaths = clonedSvg.querySelectorAll('.country-path, .park-path');
+
+        originalPaths.forEach((originalPath, index) => {
+          const clonedPath = clonedPaths[index] as SVGPathElement;
+          if (!clonedPath) return;
+
+          // Get computed style from original element
+          const computedStyle = window.getComputedStyle(originalPath as Element);
+          const fill = computedStyle.fill;
+          const stroke = computedStyle.stroke;
+          const strokeWidth = computedStyle.strokeWidth;
+
+          // Set explicit attributes on cloned path
+          if (fill && fill !== 'none' && fill !== 'transparent' && fill !== 'rgba(0, 0, 0, 0)') {
+            clonedPath.setAttribute('fill', fill);
           } else {
-            clonedPath.setAttribute('fill', '#E8EDF1'); // default light gray
-            clonedPath.setAttribute('stroke', '#ffffff');
-            clonedPath.setAttribute('stroke-width', '0.5');
+            // Check if it's highlighted
+            if (originalPath.classList.contains('country-highlight')) {
+              clonedPath.setAttribute('fill', '#10b981'); // emerald-500
+              clonedPath.setAttribute('stroke', '#047857'); // darker emerald
+              clonedPath.setAttribute('stroke-width', '0.75');
+            } else if (originalPath.classList.contains('park-path')) { // Park fallback
+              clonedPath.setAttribute('fill', '#A7F3D0'); // emerald-200 (active) or default? 
+              // Actually we should trust computed style usually. 
+              // If we are here, fill is none. That suggests unstyled.
+              // Let's assume parks act like countries for visited status if we implement that data attribute.
+              // But for now, just giving it a reasonable default if computed fails.
+              clonedPath.setAttribute('fill', '#E8EDF1'); // light gray like others?
+              clonedPath.setAttribute('stroke', '#ffffff');
+              clonedPath.setAttribute('stroke-width', '0.5');
+            } else {
+              clonedPath.setAttribute('fill', '#E8EDF1'); // default light gray
+              clonedPath.setAttribute('stroke', '#ffffff');
+              clonedPath.setAttribute('stroke-width', '0.5');
+            }
           }
-        }
-        
-        if (stroke && stroke !== 'none' && !clonedPath.hasAttribute('stroke')) {
-          clonedPath.setAttribute('stroke', stroke);
-        }
-        
-        if (strokeWidth && !clonedPath.hasAttribute('stroke-width')) {
-          clonedPath.setAttribute('stroke-width', strokeWidth);
-        }
-      });
-      
-      // Add white background rectangle as first child
-      const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      bgRect.setAttribute('x', cropX.toString());
-      bgRect.setAttribute('y', cropY.toString());
-      bgRect.setAttribute('width', cropWidth.toString());
-      bgRect.setAttribute('height', cropHeight.toString());
-      bgRect.setAttribute('fill', '#ffffff');
-      clonedSvg.insertBefore(bgRect, clonedSvg.firstChild);
-      
-      // Serialize the cloned SVG
-      const svgString = new XMLSerializer().serializeToString(clonedSvg);
-      
-      // Create data URL with proper encoding
-      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-      const svgDataUrl = URL.createObjectURL(svgBlob);
 
-      // Create canvas with high resolution (3x scale for high quality)
-      const scale = 3; // 3x resolution for high quality
-      const canvas = document.createElement('canvas');
-      canvas.width = cropWidth * scale;
-      canvas.height = cropHeight * scale;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        showNotification('Could not create canvas context.', 'error');
-        URL.revokeObjectURL(svgDataUrl);
-        return;
+          if (stroke && stroke !== 'none' && !clonedPath.hasAttribute('stroke')) {
+            clonedPath.setAttribute('stroke', stroke);
+          }
+
+          if (strokeWidth && !clonedPath.hasAttribute('stroke-width')) {
+            clonedPath.setAttribute('stroke-width', strokeWidth);
+          }
+        });
+
+        // Add white background rectangle as first child
+        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bgRect.setAttribute('x', cropX.toString());
+        bgRect.setAttribute('y', cropY.toString());
+        bgRect.setAttribute('width', cropWidth.toString());
+        bgRect.setAttribute('height', cropHeight.toString());
+        bgRect.setAttribute('fill', '#ffffff');
+        clonedSvg.insertBefore(bgRect, clonedSvg.firstChild);
+
+        // Serialize the cloned SVG
+        const svgString = new XMLSerializer().serializeToString(clonedSvg);
+
+        // Create data URL with proper encoding
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const svgDataUrl = URL.createObjectURL(svgBlob);
+
+        // Create canvas with high resolution (3x scale for high quality)
+        const scale = 3; // 3x resolution for high quality
+        const canvas = document.createElement('canvas');
+        canvas.width = cropWidth * scale;
+        canvas.height = cropHeight * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.error('Could not create canvas context.');
+          URL.revokeObjectURL(svgDataUrl);
+          resolve(null);
+          return;
+        }
+
+        // Scale the context for high resolution
+        ctx.scale(scale, scale);
+
+        // Fill white background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cropWidth, cropHeight);
+
+        const img = new Image();
+
+        img.onload = function () {
+          try {
+            // Clear and redraw with white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, cropWidth, cropHeight);
+            ctx.drawImage(img, 0, 0, cropWidth, cropHeight);
+
+            // Export at high quality (no compression)
+            const pngDataUrl = canvas.toDataURL('image/png', 1.0);
+
+            URL.revokeObjectURL(svgDataUrl);
+
+            const filenameMap: Record<string, string> = {
+              world: 'World',
+              usa: 'USA',
+              usaParks: 'US_National_Parks',
+              europe: 'Europe',
+              china: 'China',
+              india: 'India'
+            };
+            const activeScope = scopeOverride || currentScopeRef.current || 'unknown';
+            const formattedScope = filenameMap[activeScope] || activeScope;
+            const date = new Date().toISOString().split('T')[0];
+            const filename = `Travel_Tracker_${formattedScope}_${date}.png`;
+
+            resolve({ dataUrl: pngDataUrl, filename });
+          } catch (e) {
+            console.error("Error drawing SVG to canvas or exporting:", e);
+            URL.revokeObjectURL(svgDataUrl);
+            resolve(null);
+          }
+        };
+
+        img.onerror = function (err) {
+          console.error("Error loading SVG into image object.", err);
+          URL.revokeObjectURL(svgDataUrl);
+          resolve(null);
+        };
+
+        img.src = svgDataUrl;
+      } catch (error) {
+        console.error("Error in generateMapImage:", error);
+        resolve(null);
       }
+    });
+  }, []);
 
-      // Scale the context for high resolution
-      ctx.scale(scale, scale);
+  // Save map as PNG (wrapper)
+  const saveMapAsPNG = useCallback(async (scopeOverride?: Scope) => {
+    const result = await generateMapImage(scopeOverride);
 
-      // Fill white background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, cropWidth, cropHeight);
-
-      const img = new Image();
-      
-      img.onload = function() {
-        try {
-          // Clear and redraw with white background
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, cropWidth, cropHeight);
-          ctx.drawImage(img, 0, 0, cropWidth, cropHeight);
-          
-          // Export at high quality (no compression)
-          const pngDataUrl = canvas.toDataURL('image/png', 1.0);
-
-          const downloadLink = document.createElement('a');
-          downloadLink.href = pngDataUrl;
-          const date = new Date().toISOString().split('T')[0];
-          downloadLink.download = `${currentScope}_travel_map_${date}.png`;
-          
-          document.body.appendChild(downloadLink);
-          downloadLink.click();
-          document.body.removeChild(downloadLink);
-          
-          URL.revokeObjectURL(svgDataUrl);
-          showNotification('Map exported as PNG!', 'success');
-        } catch (e) {
-          console.error("Error drawing SVG to canvas or exporting:", e);
-          URL.revokeObjectURL(svgDataUrl);
-          showNotification('Error exporting map. Please try again.', 'error');
-        }
-      };
-
-      img.onerror = function(err) {
-        console.error("Error loading SVG into image object.", err);
-        URL.revokeObjectURL(svgDataUrl);
-        showNotification('Error loading map data for export. Please try again.', 'error');
-      };
-
-      img.src = svgDataUrl;
-    } catch (error) {
-      console.error("Error in saveMapAsPNG:", error);
+    if (result) {
+      const { dataUrl, filename } = result;
+      const downloadLink = document.createElement('a');
+      downloadLink.href = dataUrl;
+      downloadLink.download = filename;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      showNotification('Map exported as PNG!', 'success');
+    } else {
       showNotification('Error exporting map. Please try again.', 'error');
     }
-  }, [currentScope, showNotification]);
+  }, [generateMapImage, showNotification]);
+
+  // Handle Save Options
+  type SaveOption = 'image' | 'all-images' | 'csv' | 'share';
+
+  const handleSaveOption = useCallback(async (option: SaveOption) => {
+    setIsSaveDropdownOpen(false);
+
+    if (option === 'image') {
+      // Save current page image
+      saveMapAsPNG();
+    } else if (option === 'all-images') {
+      // Save all images
+      const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
+      const initialScope = currentScope;
+
+      showNotification('Starting batch export... Please do not interact with the map.', 'success');
+
+      const zip = new JSZip();
+
+      // Helper delay function
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+      // Process sequentially
+      for (const scope of scopes) {
+        // specific logic to ensure transition happens
+        if (scope !== currentScopeRef.current) {
+          handleScopeSelection(scope);
+          // Wait for data load and D3 render
+          // Give it generous time to ensure map is fully drawn and stabilized
+          await delay(2500);
+        } else {
+          // If it's the start scope, we still might want a small delay? 
+          // No, it's already rendered. But just in case user just switched.
+          await delay(500);
+        }
+
+        const result = await generateMapImage(scope);
+        if (result) {
+          const base64Data = result.dataUrl.split(',')[1];
+          zip.file(result.filename, base64Data, { base64: true });
+        }
+
+        // Wait a bit to prevent CPU hogs
+        await delay(500);
+      }
+
+      // Restore original scope
+      if (initialScope !== currentScopeRef.current) {
+        handleScopeSelection(initialScope);
+      }
+
+      try {
+        const content = await zip.generateAsync({ type: "blob" });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `Travel_Tracker_All_Maps_${date}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        showNotification('Batch export completed! ZIP file downloaded.', 'success');
+      } catch (err) {
+        console.error("Error generating ZIP:", err);
+        showNotification('Error generating ZIP file.', 'error');
+      }
+
+    } else if (option === 'csv') {
+      // Save as CSV with 6 columns
+      const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
+      const scopeLabels: Record<Scope, string> = {
+        world: 'World',
+        usa: 'USA',
+        usaParks: 'US National Parks',
+        europe: 'Europe',
+        china: 'China',
+        india: 'India'
+      };
+
+      const scopeUnits: Record<Scope, string> = {
+        world: 'countries',
+        usa: 'states',
+        usaParks: 'parks',
+        europe: 'countries',
+        china: 'provinces',
+        india: 'states'
+      };
+
+      // Use fixed constants for totals to ensure CSV export works even if maps aren't loaded
+      const totalCounts: Record<Scope, number> = {
+        world: 177, // Natural Earth 110m standard
+        usa: 51,   // 50 States + DC
+        usaParks: 63, // National Parks
+        europe: 53, // Approximate Europe countries
+        china: 34, // Provinces/SARs
+        india: 36 // States + UTs
+      };
+
+      // Prepare lists
+      const lists: Record<Scope, string[]> = {
+        world: Array.from(allActiveLocations.world),
+        usa: Array.from(allActiveLocations.usa),
+        usaParks: Array.from(allActiveLocations.usaParks),
+        europe: Array.from(allActiveLocations.europe),
+        china: Array.from(allActiveLocations.china),
+        india: Array.from(allActiveLocations.india)
+      };
+
+      // Header Row (Scope Names)
+      const headerRow = scopes.map(scope => `"${scopeLabels[scope]}"`).join(",");
+
+      // Count Row (Summary)
+      const countRow = scopes.map(scope => {
+        const count = lists[scope].length;
+        const total = totalCounts[scope];
+        const percent = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+        const unit = scopeUnits[scope];
+        const scopeNameLower = scopeLabels[scope].toLowerCase();
+
+        return `"Total: ${count} ${unit} ${percent}% ${scopeNameLower}"`;
+      }).join(",");
+
+      // Find max rows needed
+      const maxRows = Math.max(...Object.values(lists).map(l => l.length));
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += headerRow + "\n";
+      csvContent += countRow + "\n"; // Summary row
+
+      // Data Rows
+      for (let i = 0; i < maxRows; i++) {
+        const rowData = scopes.map(scope => {
+          const location = lists[scope][i];
+          return location ? `"${location}"` : ""; // Handle empty cells
+        });
+        csvContent += rowData.join(",") + "\n";
+      }
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Travel_Tracker_Summary.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showNotification('Locations exported as 6-column CSV!', 'success');
+
+    } else if (option === 'share') {
+      // Share my travels
+      const totalLocations = Object.values(allActiveLocations).reduce((acc, set) => acc + set.size, 0);
+      const shareData = {
+        title: 'My Travel Tracker',
+        text: `Check out my travels! I've visited ${totalLocations} locations across the world. #TravelTracker`,
+        url: window.location.href,
+      };
+
+      if (navigator.share) {
+        navigator.share(shareData).catch((err) => console.log('Error sharing', err));
+      } else {
+        navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        showNotification('Travel notes copied to clipboard!', 'success');
+      }
+    }
+  }, [saveMapAsPNG, allActiveLocations, showNotification]);
+
+
+
+
 
   // Zoom handlers
   const handleZoomIn = useCallback((e?: React.MouseEvent) => {
@@ -1505,7 +1836,7 @@ function App() {
       .on("contextmenu", (e) => e.preventDefault());
 
     svgRef.current = svg.node();
-    
+
     // Add event listeners directly to SVG element
     if (svgRef.current) {
       const preventSelection = (e: Event) => {
@@ -1539,34 +1870,34 @@ function App() {
       .scaleExtent([0.5, 20]) // Allow more zoom range
       .filter((event) => {
         const target = event.target as HTMLElement;
-        
+
         // Always allow wheel zoom
         if (event.type === 'wheel') {
           return true;
         }
-        
+
         // Prevent zoom/pan when clicking on map paths (country paths)
         if (event.type === 'mousedown' && target?.classList.contains('country-path')) {
           return false;
         }
-        
+
         // Prevent zoom/pan when clicking on buttons (but allow button clicks to work)
         if (event.type === 'mousedown' && target?.closest('button')) {
           return false;
         }
-        
+
         // Allow drag/pan on empty areas
         if (event.type === 'mousedown') {
           return true;
         }
-        
+
         // Allow all other interactions
         return true;
       })
       .on("zoom", (event) => {
         // Skip zoom event handling during scope updates to prevent visible jump
         if (isUpdatingScopeRef.current) return;
-        
+
         if (mapGroupRef.current) {
           mapGroupRef.current.attr("transform", event.transform);
         }
@@ -1604,24 +1935,16 @@ function App() {
             await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
-        
-        // Hide container during initial setup to prevent visible jump
-        if (mapContainerRef.current) {
-          mapContainerRef.current.style.display = 'none';
-        }
-        
+
         // Set flag to prevent zoom event handler from interfering
         isUpdatingScopeRef.current = true;
-        
+
         // Wait for state to update and useEffect to run
         await new Promise(resolve => setTimeout(resolve, 50));
-        
+
         // The useEffect will handle rendering with proper transform
         // Just ensure everything is set up
         requestAnimationFrame(() => {
-          if (mapContainerRef.current) {
-            mapContainerRef.current.style.display = '';
-          }
           isUpdatingScopeRef.current = false;
         });
       } catch (error) {
@@ -1666,16 +1989,28 @@ function App() {
   const activeLocationsRef = useRef<Set<string>>(new Set());
   const showLabelsRef = useRef(false);
   const currentScopeRef = useRef<Scope>(currentScope);
-  
+
   // Keep refs in sync with state (but don't trigger re-renders)
   useEffect(() => {
     activeLocationsRef.current = activeLocations;
+
     // Update labels when active locations change
     if (showLabelsRef.current && pathRef.current && labelGroupRef.current) {
       renderLabels();
     }
-  }, [activeLocations, renderLabels]);
-  
+
+    // Update map path highlights
+    if (mapGroupRef.current) {
+      mapGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".country-path")
+        .classed('country-highlight', (d: GeoFeature) => currentScope !== 'usaParks' && activeLocations.has(d.properties.name));
+    }
+
+    if (currentScope === 'usaParks' && parkGroupRef.current) {
+      parkGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".park-path")
+        .classed('country-highlight', (d: GeoFeature) => activeLocations.has(d.properties.name));
+    }
+  }, [activeLocations, renderLabels, currentScope]);
+
   useEffect(() => {
     showLabelsRef.current = showLabels;
     // Re-render labels when showLabels changes
@@ -1693,19 +2028,19 @@ function App() {
     if (currentFeatures.length > 0 && mapGroupRef.current && svgRef.current && zoomRef.current) {
       // Set flag to prevent zoom event handler from interfering
       isUpdatingScopeRef.current = true;
-      
+
       // Use requestAnimationFrame to ensure everything happens in a single frame
       requestAnimationFrame(() => {
         if (!mapGroupRef.current || !svgRef.current || !zoomRef.current) {
           isUpdatingScopeRef.current = false;
           return;
         }
-        
+
         // Hide map container temporarily to prevent visible jump
         if (mapContainerRef.current) {
           mapContainerRef.current.style.display = 'none';
         }
-        
+
         // Clear old paths immediately
         if (mapGroupRef.current) {
           mapGroupRef.current.selectAll('.country-path').remove();
@@ -1724,7 +2059,7 @@ function App() {
           hoverLabelTimeoutRef.current = null;
         }
         currentHoverNameRef.current = null;
-        
+
         const worldProjection = geoMiller();
         const usaProjection = d3.geoAlbersUsa();
         const europeProjection = d3.geoMercator().center([15, 55]).scale(800);
@@ -1732,14 +2067,14 @@ function App() {
         const chinaProjection = d3.geoMercator();
         // For India, use Mercator projection - will be fitted to bounds
         const indiaProjection = d3.geoMercator();
-        
-        const projection = 
+
+        const projection =
           currentScope === 'world' ? worldProjection :
-          currentScope === 'usa' ? usaProjection :
-          currentScope === 'usaParks' ? usaProjection :
-          currentScope === 'europe' ? europeProjection :
-          currentScope === 'china' ? chinaProjection :
-          indiaProjection;
+            currentScope === 'usa' ? usaProjection :
+              currentScope === 'usaParks' ? usaProjection :
+                currentScope === 'europe' ? europeProjection :
+                  currentScope === 'china' ? chinaProjection :
+                    indiaProjection;
         currentProjectionRef.current = projection;
 
         const path = d3.geoPath().projection(projection);
@@ -1753,22 +2088,22 @@ function App() {
             type: "FeatureCollection",
             features: currentFeatures
           };
-          
+
           // Fit projection to features
           try {
             if (currentScope === 'china') {
               // Calculate geographic bounds
               const bounds = d3.geoBounds(featureCollection);
               console.log('China geographic bounds:', bounds);
-              
+
               // Use fitSize with some padding
               const padding = 60;
               projection.fitSize([dims.width - padding * 2, dims.height - padding * 2], featureCollection);
-              
+
               // Get current translate and adjust for padding
               const currentTranslate = projection.translate();
               projection.translate([currentTranslate[0] + padding, currentTranslate[1] + padding]);
-              
+
               console.log('China projection after fit:', {
                 center: projection.center(),
                 scale: projection.scale(),
@@ -1778,15 +2113,15 @@ function App() {
               // For India, use fitSize similar to China
               const bounds = d3.geoBounds(featureCollection);
               console.log('India geographic bounds:', bounds);
-              
+
               // Use fitSize with some padding
               const padding = 60;
               projection.fitSize([dims.width - padding * 2, dims.height - padding * 2], featureCollection);
-              
+
               // Get current translate and adjust for padding
               const currentTranslate = projection.translate();
               projection.translate([currentTranslate[0] + padding, currentTranslate[1] + padding]);
-              
+
               console.log('India projection after fitSize:', {
                 translate: projection.translate(),
                 scale: projection.scale()
@@ -1805,7 +2140,7 @@ function App() {
               console.log('Using fallback projection for India');
             }
           }
-          
+
           // Calculate initial transform
           const [[x0, y0], [x1, y1]] = pathRef.current.bounds(featureCollection);
           console.log(`Bounds for ${currentScope}:`, { x0, y0, x1, y1 });
@@ -1815,14 +2150,14 @@ function App() {
             const translateY = (dims.height - scale * (y0 + y1)) / 2;
             console.log(`Transform for ${currentScope}:`, { scale, translateX, translateY });
             initialTransformRef.current = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
-            
+
             // Reset zoom state completely first
             const svg = d3.select(svgRef.current);
             svg.property('__zoom', null);
-            
+
             // Update zoom behavior's internal state (without triggering zoom event)
             svg.property('__zoom', initialTransformRef.current);
-            
+
             // Set transform directly on mapGroup and labelGroup
             // This ensures the visual transform matches the zoom state immediately
             if (mapGroupRef.current) {
@@ -1840,7 +2175,7 @@ function App() {
             // }
           }
         }
-        
+
         // Render map synchronously (no async, no delays)
         if (mapGroupRef.current && pathRef.current) {
           const paths = mapGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".country-path")
@@ -1866,27 +2201,27 @@ function App() {
               .style("pointer-events", 'none');
           } else {
             joined
-              .on("click", function(event: MouseEvent, d: GeoFeature) {
+              .on("click", function (event: MouseEvent, d: GeoFeature) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 if (Date.now() - lastTouchTimeRef.current < 600) return;
                 if (event.type === "mousemove") return;
                 if (!d.properties.name) return;
-                
+
                 // Hide label and record click time to prevent showing immediately after
                 hideHoverLabel();
                 lastClickTimeRef.current = Date.now();
-                
+
                 handleLocationToggle(d.properties.name);
               })
-              .on("mousedown", function(event: MouseEvent) {
+              .on("mousedown", function (event: MouseEvent) {
                 event.stopPropagation();
                 // Record mousedown time to prevent label showing on click
                 lastClickTimeRef.current = Date.now();
                 hideHoverLabel();
               })
-              .on("mouseenter", function(_event: MouseEvent, d: GeoFeature) {
+              .on("mouseenter", function (_event: MouseEvent, d: GeoFeature) {
                 // Don't show label on touch devices (mouse events can fire after touch on some browsers)
                 if (isTouchDeviceRef.current) return;
                 // Don't show label if we just clicked (within 800ms)
@@ -1896,9 +2231,9 @@ function App() {
                 }
               })
               .on("mouseleave", hideHoverLabel)
-              .on("touchstart", function(_event: TouchEvent, d: GeoFeature) {
+              .on("touchstart", function (_event: TouchEvent, d: GeoFeature) {
                 if (!d.properties.name) return;
-                
+
                 const pathElement = d3.select(this);
                 let touchTimeout: number | null = null;
                 let movedBeyondTap = false;
@@ -1912,7 +2247,7 @@ function App() {
                 let activeTouchId: number | null = null;
                 const TAP_MOVE_THRESHOLD = 32;
                 lastTouchTimeRef.current = Date.now();
-                
+
                 const getRelevantTouch = (touches: TouchList) => {
                   if (touches.length === 0) return null;
                   if (activeTouchId !== null) {
@@ -1925,7 +2260,7 @@ function App() {
                   }
                   return touches.item(0);
                 };
-                
+
                 const updateTouchPosition = (touches: TouchList) => {
                   const touch = getRelevantTouch(touches);
                   if (touch) {
@@ -1936,7 +2271,7 @@ function App() {
                   }
                   return null;
                 };
-                
+
                 const resolveLocationName = () => {
                   if (hasTouchPosition) {
                     const element = document.elementFromPoint(lastTouchX, lastTouchY);
@@ -1947,11 +2282,11 @@ function App() {
                   }
                   return d.properties.name;
                 };
-                
+
                 const preventSelection = (e: Event) => {
                   e.preventDefault();
                 };
-                
+
                 const startLongPressTimer = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
@@ -1965,13 +2300,13 @@ function App() {
                         showHoverLabel(targetName, true);
                       }
                       touchTimeout = null;
-                      
+
                       document.addEventListener('selectstart', preventSelection);
                       document.addEventListener('contextmenu', preventSelection);
                     }
                   }, 320);
                 };
-                
+
                 const cancelLongPress = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
@@ -2014,7 +2349,7 @@ function App() {
                     }
                   }
                 };
-                
+
                 const didRelevantTouchEnd = (event?: TouchEvent) => {
                   if (!event || activeTouchId === null) {
                     return true;
@@ -2027,7 +2362,7 @@ function App() {
                   }
                   return false;
                 };
-                
+
                 const cleanupTouchListeners = () => {
                   pathElement.on("touchend.touchlabel", null);
                   pathElement.on("touchcancel.touchlabel", null);
@@ -2043,14 +2378,14 @@ function App() {
 
                   const wasLongPress = longPressTriggered;
                   cancelLongPress();
-                  
+
                   if (!wasLongPress && !movedBeyondTap) {
                     const targetName = resolveLocationName();
                     if (targetName) {
                       handleLocationToggle(targetName);
                     }
                   }
-                  
+
                   if (hoverLabelGroupRef.current) {
                     currentHoverNameRef.current = null;
                     hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
@@ -2059,14 +2394,14 @@ function App() {
                     clearTimeout(hoverLabelTimeoutRef.current);
                     hoverLabelTimeoutRef.current = null;
                   }
-                  
+
                   document.removeEventListener('selectstart', preventSelection);
                   document.removeEventListener('contextmenu', preventSelection);
-                  
+
                   cleanupTouchListeners();
                   activeTouchId = null;
                 };
-                
+
                 const initialTouch = _event.changedTouches.item(0);
                 if (initialTouch) {
                   activeTouchId = initialTouch.identifier;
@@ -2082,9 +2417,9 @@ function App() {
                     touchStartY = lastTouchY;
                   }
                 }
-                
+
                 startLongPressTimer();
-                
+
                 pathElement.on("touchend.touchlabel", handleTouchEnd);
                 pathElement.on("touchcancel.touchlabel", handleTouchEnd);
                 pathElement.on("touchmove.touchlabel", handleTouchMove);
@@ -2093,12 +2428,12 @@ function App() {
               })
               .style("pointer-events", 'auto');
           }
-          
+
           console.log(`Rendered ${joined.size()} paths for ${currentScope}`);
           if (currentScope === 'china' && joined.size() === 0) {
             console.error('No paths rendered for China! Features:', currentFeatures.length);
           }
-          
+
           if (currentScope === 'usaParks' && parkGroupRef.current && pathRef.current) {
             const parkPaths = parkGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".park-path")
               .data(usNationalParkFeatures, (d: GeoFeature) => d.properties.name);
@@ -2108,27 +2443,27 @@ function App() {
               .attr("data-name", (d: GeoFeature) => normalizeLocationName(d.properties.name))
               .attr("data-location-name", (d: GeoFeature) => d.properties.name)
               .attr("d", (d: GeoFeature) => pathRef.current!(d) || '')
-              .on("click", function(event: MouseEvent, d: GeoFeature) {
+              .on("click", function (event: MouseEvent, d: GeoFeature) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 if (Date.now() - lastTouchTimeRef.current < 600) return;
                 if (event.type === "mousemove") return;
                 if (!d.properties.name) return;
-                
+
                 // Hide label and record click time to prevent showing immediately after
                 hideHoverLabel();
                 lastClickTimeRef.current = Date.now();
-                
+
                 handleLocationToggle(d.properties.name);
               })
-              .on("mousedown", function(event: MouseEvent) {
+              .on("mousedown", function (event: MouseEvent) {
                 event.stopPropagation();
                 // Record mousedown time to prevent label showing on click
                 lastClickTimeRef.current = Date.now();
                 hideHoverLabel();
               })
-              .on("mouseenter", function(_event: MouseEvent, d: GeoFeature) {
+              .on("mouseenter", function (_event: MouseEvent, d: GeoFeature) {
                 // Don't show label on touch devices (mouse events can fire after touch on some browsers)
                 if (isTouchDeviceRef.current) return;
                 // Don't show label if we just clicked (within 800ms)
@@ -2138,9 +2473,9 @@ function App() {
                 }
               })
               .on("mouseleave", hideHoverLabel)
-              .on("touchstart", function(_event: TouchEvent, d: GeoFeature) {
+              .on("touchstart", function (_event: TouchEvent, d: GeoFeature) {
                 if (!d.properties.name) return;
-                
+
                 const pathElement = d3.select(this);
                 let touchTimeout: number | null = null;
                 let movedBeyondTap = false;
@@ -2154,7 +2489,7 @@ function App() {
                 let activeTouchId: number | null = null;
                 const TAP_MOVE_THRESHOLD = 32;
                 lastTouchTimeRef.current = Date.now();
-                
+
                 const getRelevantTouch = (touches: TouchList) => {
                   if (touches.length === 0) return null;
                   if (activeTouchId !== null) {
@@ -2167,7 +2502,7 @@ function App() {
                   }
                   return touches.item(0);
                 };
-                
+
                 const updateTouchPosition = (touches: TouchList) => {
                   const touch = getRelevantTouch(touches);
                   if (touch) {
@@ -2178,7 +2513,7 @@ function App() {
                   }
                   return null;
                 };
-                
+
                 const resolveLocationName = () => {
                   if (hasTouchPosition) {
                     const element = document.elementFromPoint(lastTouchX, lastTouchY);
@@ -2189,11 +2524,11 @@ function App() {
                   }
                   return d.properties.name;
                 };
-                
+
                 const preventSelection = (e: Event) => {
                   e.preventDefault();
                 };
-                
+
                 const startLongPressTimer = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
@@ -2207,13 +2542,13 @@ function App() {
                         showHoverLabel(targetName, true);
                       }
                       touchTimeout = null;
-                      
+
                       document.addEventListener('selectstart', preventSelection);
                       document.addEventListener('contextmenu', preventSelection);
                     }
                   }, 320);
                 };
-                
+
                 const cancelLongPress = () => {
                   if (touchTimeout !== null) {
                     clearTimeout(touchTimeout);
@@ -2256,7 +2591,7 @@ function App() {
                     }
                   }
                 };
-                
+
                 const didRelevantTouchEnd = (event?: TouchEvent) => {
                   if (!event || activeTouchId === null) {
                     return true;
@@ -2269,7 +2604,7 @@ function App() {
                   }
                   return false;
                 };
-                
+
                 const cleanupTouchListeners = () => {
                   pathElement.on("touchend.touchlabel", null);
                   pathElement.on("touchcancel.touchlabel", null);
@@ -2285,14 +2620,14 @@ function App() {
 
                   const wasLongPress = longPressTriggered;
                   cancelLongPress();
-                  
+
                   if (!wasLongPress && !movedBeyondTap) {
                     const targetName = resolveLocationName();
                     if (targetName) {
                       handleLocationToggle(targetName);
                     }
                   }
-                  
+
                   if (hoverLabelGroupRef.current) {
                     currentHoverNameRef.current = null;
                     hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg").remove();
@@ -2301,14 +2636,14 @@ function App() {
                     clearTimeout(hoverLabelTimeoutRef.current);
                     hoverLabelTimeoutRef.current = null;
                   }
-                  
+
                   document.removeEventListener('selectstart', preventSelection);
                   document.removeEventListener('contextmenu', preventSelection);
-                  
+
                   cleanupTouchListeners();
                   activeTouchId = null;
                 };
-                
+
                 const initialTouch = _event.changedTouches.item(0);
                 if (initialTouch) {
                   activeTouchId = initialTouch.identifier;
@@ -2324,9 +2659,9 @@ function App() {
                     touchStartY = lastTouchY;
                   }
                 }
-                
+
                 startLongPressTimer();
-                
+
                 pathElement.on("touchend.touchlabel", handleTouchEnd);
                 pathElement.on("touchcancel.touchlabel", handleTouchEnd);
                 pathElement.on("touchmove.touchlabel", handleTouchMove);
@@ -2340,7 +2675,7 @@ function App() {
             renderLabels();
           }
         }
-        
+
         // Show map container after everything is rendered (in next frame to ensure rendering is complete)
         requestAnimationFrame(() => {
           if (mapContainerRef.current) {
@@ -2374,9 +2709,9 @@ function App() {
       <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
         <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-2">
-            <img 
-              src={logoImage} 
-              alt="Travel Tracker Logo" 
+            <img
+              src={logoImage}
+              alt="Travel Tracker Logo"
               className="w-8 h-8 object-contain flex-shrink-0"
             />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
@@ -2411,11 +2746,10 @@ function App() {
                     role="option"
                     aria-selected={option.value === currentScope}
                     onClick={() => handleScopeOptionClick(option.value)}
-                    className={`w-full flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-colors ${
-                      option.value === currentScope
-                        ? 'bg-indigo-50 text-indigo-600'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-colors ${option.value === currentScope
+                      ? 'bg-indigo-50 text-indigo-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     <span className="flex items-center gap-1 font-semibold">
                       {renderScopeIcon(option)}
@@ -2439,6 +2773,86 @@ function App() {
               {percentage}%
             </span>
             <span className="text-indigo-700 font-semibold hidden sm:inline">{totalTypeLabel.replace('%', '')}</span>
+          </div>
+
+          {/* Auth Section */}
+          <div className="flex items-center pl-2 sm:pl-4 border-l border-gray-200 ml-1 sm:ml-2">
+            {user ? (
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dropdown = document.getElementById('user-dropdown');
+                    if (dropdown) {
+                      dropdown.classList.toggle('hidden');
+                    }
+                  }}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md hover:shadow-lg transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+                  aria-label="User menu"
+                  aria-expanded="false"
+                >
+                  {user.username.charAt(0).toUpperCase()}
+                </button>
+
+                {/* Dropdown Menu */}
+                <div
+                  id="user-dropdown"
+                  className="hidden absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all"
+                  onMouseLeave={() => {
+                    const dropdown = document.getElementById('user-dropdown');
+                    if (dropdown) dropdown.classList.add('hidden');
+                  }}
+                >
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm text-gray-900 font-semibold truncate">{user.username}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setProfileInitialTab('edit');
+                      setIsProfileModalOpen(true);
+                      const dropdown = document.getElementById('user-dropdown');
+                      if (dropdown) dropdown.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    My Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setProfileInitialTab('stats');
+                      setIsProfileModalOpen(true);
+                      const dropdown = document.getElementById('user-dropdown');
+                      if (dropdown) dropdown.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    My Travels
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsSignInModalOpen(true)}
+                className="h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg sm:rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -2501,10 +2915,13 @@ function App() {
                 <button
                   onClick={() => {
                     const allLocationNames = listItems;
-                    
+
                     if (activeLocations.size === allLocationNames.length) {
                       // Deselect all
-                      setActiveLocations(new Set());
+                      setAllActiveLocations(prev => ({
+                        ...prev,
+                        [currentScope]: new Set()
+                      }));
                       updatePathHighlights(allLocationNames, false);
                       // Update list items
                       allLocationNames.forEach(name => {
@@ -2520,7 +2937,10 @@ function App() {
                       });
                     } else {
                       // Select all
-                      setActiveLocations(new Set(allLocationNames));
+                      setAllActiveLocations(prev => ({
+                        ...prev,
+                        [currentScope]: new Set(allLocationNames)
+                      }));
                       updatePathHighlights(allLocationNames, true);
                       // Update list items
                       allLocationNames.forEach(name => {
@@ -2536,11 +2956,10 @@ function App() {
                       });
                     }
                   }}
-                  className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
-                    activeLocations.size === listItems.length && activeLocations.size > 0
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600' 
-                      : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
-                  }`}
+                  className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                    : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
+                    }`}
                   title={activeLocations.size === currentFeatures.filter(d => d.properties.name).length && activeLocations.size > 0 ? "Deselect all locations" : "Select all locations"}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -2548,14 +2967,13 @@ function App() {
                   </svg>
                   <span className="hidden sm:inline">Select All</span>
                 </button>
-                
+
                 <button
                   onClick={() => setShowLabels(!showLabels)}
-                  className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
-                    showLabels 
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600' 
-                      : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
-                  }`}
+                  className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${showLabels
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
+                    : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
+                    }`}
                   title="Toggle country/state labels for selected locations"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -2564,29 +2982,64 @@ function App() {
                   <span className="hidden sm:inline">Labels</span>
                 </button>
 
-                <button
-                  onClick={saveMapAsPNG}
-                  className="text-sm flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
-                  title="Export map as PNG image (high quality)"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                  </svg>
-                  <span className="hidden sm:inline">Save</span>
-                </button>
+                <div className="relative" ref={saveDropdownRef}>
+                  <button
+                    onClick={() => setIsSaveDropdownOpen(!isSaveDropdownOpen)}
+                    className="h-10 sm:h-12 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
+                    title="Export options"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span className="hidden sm:inline">Save</span>
+                    <svg className={`w-3 h-3 ml-0.5 transition-transform ${isSaveDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+
+                  {isSaveDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
+                      <button
+                        onClick={() => handleSaveOption('image')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                      >
+                        <span className="text-lg">🖼️</span> Save as Image
+                      </button>
+                      <button
+                        onClick={() => handleSaveOption('all-images')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                      >
+                        <span className="text-lg">🎞️</span> Save as Images
+                      </button>
+                      <button
+                        onClick={() => handleSaveOption('csv')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                      >
+                        <span className="text-lg">📊</span> Save as CSV
+                      </button>
+                      <div className="h-px bg-gray-100 my-1"></div>
+                      <button
+                        onClick={() => handleSaveOption('share')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                      >
+                        <span className="text-lg">🔗</span> Share My Travels
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div 
-            id="map-container" 
-            ref={mapContainerRef} 
+          <div
+            id="map-container"
+            ref={mapContainerRef}
             className="flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50"
-            style={{ 
-              userSelect: 'none', 
-              WebkitUserSelect: 'none', 
-              MozUserSelect: 'none', 
-              msUserSelect: 'none', 
+            style={{
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none',
               WebkitTouchCallout: 'none',
               WebkitTapHighlightColor: 'transparent'
             } as React.CSSProperties}
@@ -2599,7 +3052,7 @@ function App() {
             onDragStart={(e) => e.preventDefault()}
             onContextMenu={(e) => e.preventDefault()}
           ></div>
-          
+
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm z-50 rounded-xl pointer-events-none">
               <div className="flex items-center">
@@ -2614,9 +3067,8 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl p-4 sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${
-          showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
-        }`}>
+        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl p-4 sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+          }`}>
           {/* Close button for mobile */}
           <button
             onClick={() => setShowListOnMobile(false)}
@@ -2655,11 +3107,11 @@ function App() {
                     e.preventDefault();
                     e.stopPropagation();
                     e.nativeEvent.stopImmediatePropagation();
-                    
+
                     // Hide label and record click time to prevent showing immediately after
                     hideHoverLabel();
                     lastClickTimeRef.current = Date.now();
-                    
+
                     // Update DOM directly first
                     const listItem = d3.select(`#list-${normalizedName}`);
                     if (!listItem.empty()) {
@@ -2693,7 +3145,7 @@ function App() {
                       showHoverLabel(name, true);
                       touchTimeout = null;
                     }, 300);
-                    
+
                     const handleTouchEnd = () => {
                       if (touchTimeout !== null) {
                         clearTimeout(touchTimeout);
@@ -2703,7 +3155,7 @@ function App() {
                       document.removeEventListener('touchend', handleTouchEnd);
                       document.removeEventListener('touchcancel', handleTouchEnd);
                     };
-                    
+
                     // Store handler on element for cleanup
                     (e.currentTarget as HTMLElement).addEventListener('touchend', handleTouchEnd, { once: true });
                     (e.currentTarget as HTMLElement).addEventListener('touchcancel', handleTouchEnd, { once: true });
@@ -2728,7 +3180,7 @@ function App() {
             })}
           </div>
         </div>
-        
+
         {/* Mobile overlay when list is open */}
         {showListOnMobile && (
           <div
@@ -2741,8 +3193,27 @@ function App() {
 
       {/* Notification Container */}
       <div id="notification-container" className="fixed bottom-4 left-4 z-50"></div>
+
+      {/* Auth Modal */}
+      <SignInModal
+        isOpen={isSignInModalOpen}
+        onClose={() => setIsSignInModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        onUpdateUser={(newUsername) => user && setUser({ ...user, username: newUsername })}
+        activeLocations={allActiveLocations}
+        initialTab={profileInitialTab}
+      />
     </div>
   );
+
+
 }
 
 export default App;
