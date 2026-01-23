@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { authService, type User } from './services/auth';
 import { SignInModal } from './components/SignInModal';
 import { ProfileModal } from './components/ProfileModal';
+import { AboutModal } from './components/AboutModal';
 import * as d3 from 'd3';
 import { geoMiller } from 'd3-geo-projection';
 import { feature } from 'topojson-client';
@@ -82,6 +83,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [profileInitialTab, setProfileInitialTab] = useState<'stats' | 'edit'>('stats');
   const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
   const saveDropdownRef = useRef<HTMLDivElement>(null);
@@ -2835,6 +2837,19 @@ function App() {
                     My Travels
                   </button>
                   <button
+                    onClick={() => {
+                      setIsAboutModalOpen(true);
+                      const dropdown = document.getElementById('user-dropdown');
+                      if (dropdown) dropdown.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    About
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center"
                   >
@@ -3209,6 +3224,12 @@ function App() {
         onUpdateUser={(newUsername) => user && setUser({ ...user, username: newUsername })}
         activeLocations={allActiveLocations}
         initialTab={profileInitialTab}
+      />
+
+      {/* About Modal */}
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
       />
     </div>
   );
