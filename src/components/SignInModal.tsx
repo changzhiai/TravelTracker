@@ -31,9 +31,9 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                 setError('Username or Email and password are required.');
                 return;
             }
-            const success = await authService.login(username.trim(), password.trim());
-            if (success) {
-                onLoginSuccess(username.trim());
+            const user = await authService.login(username.trim(), password.trim());
+            if (user) {
+                onLoginSuccess(user.username);
                 resetForm();
             } else {
                 setError('Invalid username or password.');

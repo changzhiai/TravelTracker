@@ -25,7 +25,7 @@ export const authService = {
         }
     },
 
-    async login(username: string, password: string): Promise<boolean> {
+    async login(username: string, password: string): Promise<User | null> {
         try {
             const response = await fetch(`${API_URL}/login`, {
                 method: 'POST',
@@ -34,13 +34,17 @@ export const authService = {
             });
 
             if (response.ok) {
-                localStorage.setItem(CURRENT_USER_KEY, username);
-                return true;
+                const data = await response.json();
+                const user = data.user;
+                if (user && user.username) {
+                    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+                    return user;
+                }
             }
-            return false;
+            return null;
         } catch (error) {
             console.error('Login error:', error);
-            return false;
+            return null;
         }
     },
 
@@ -53,7 +57,13 @@ export const authService = {
             });
 
             if (response.ok) {
-                localStorage.setItem(CURRENT_USER_KEY, username);
+                const data = await response.json();
+                const user: User = {
+                    id: data.userId,
+                    username,
+                    email
+                };
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
                 return true;
             }
             return false;
