@@ -112,7 +112,7 @@ When you make changes to your code:
 3.  Pull and restart:
     ```bash
     cd travel-tracker
-    git pull
+    git pull origin dev
     npm install
     # Rebuild frontend if needed
     npm run build
