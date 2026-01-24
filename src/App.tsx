@@ -2769,7 +2769,7 @@ function App() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
           </div>
 
-          <div className="relative w-36 sm:w-40 z-30" ref={scopeDropdownRef}>
+          <div className="relative w-28 sm:w-32 z-30" ref={scopeDropdownRef}>
             <button
               type="button"
               onClick={() => setIsScopeDropdownOpen(prev => !prev)}
