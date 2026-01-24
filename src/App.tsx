@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
+import { jsPDF } from 'jspdf';
 import { authService, type User } from './services/auth';
 import { SignInModal } from './components/SignInModal';
 import { ProfileModal } from './components/ProfileModal';
@@ -1716,8 +1717,197 @@ function App() {
     }
   }, [generateMapImage, showNotification]);
 
+  // Generate a beautiful summary PDF
+  const generateSummaryPDF = useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      try {
+        const width = 1080;
+        const height = 1350;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(false);
+          return;
+        }
+
+        // 1. Background Gradient
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#4f46e5'); // indigo-600
+        gradient.addColorStop(1, '#9333ea'); // purple-600
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. Add some subtle patterns/circles
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.beginPath();
+        ctx.arc(width * 0.8, height * 0.2, 300, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(width * 0.1, height * 0.8, 200, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Setup drawing flow
+        const drawContent = () => {
+          // 4. Title
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 60px system-ui, -apple-system, sans-serif';
+          ctx.fillText('Travel Tracker', width / 2, 260);
+
+          ctx.font = '36px system-ui, -apple-system, sans-serif';
+          const name = user?.username || 'Traveler';
+          ctx.fillText(`Travel Summary for ${name}`, width / 2, 320);
+
+          // 5. Stats Cards
+          const stats = [
+            { label: '🌍 World', total: 177, count: allActiveLocations['world']?.size || 0 },
+            { label: '🇺🇸 USA', total: 51, count: allActiveLocations['usa']?.size || 0 },
+            { label: '🏞️ US Parks', total: 63, count: allActiveLocations['usaParks']?.size || 0 },
+            { label: '🇪🇺 Europe', total: 53, count: allActiveLocations['europe']?.size || 0 },
+            { label: '🇨🇳 China', total: 34, count: allActiveLocations['china']?.size || 0 },
+            { label: '🇮🇳 India', total: 36, count: allActiveLocations['india']?.size || 0 },
+          ];
+
+          const startY = 420;
+          const cardHeight = 120;
+          const cardWidth = 800;
+          const cardX = (width - cardWidth) / 2;
+
+          stats.forEach((stat, i) => {
+            const y = startY + (i * 140);
+
+            // Card background (simulating roundRect)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            const radius = 20;
+            ctx.beginPath();
+            ctx.moveTo(cardX + radius, y);
+            ctx.lineTo(cardX + cardWidth - radius, y);
+            ctx.quadraticCurveTo(cardX + cardWidth, y, cardX + cardWidth, y + radius);
+            ctx.lineTo(cardX + cardWidth, y + cardHeight - radius);
+            ctx.quadraticCurveTo(cardX + cardWidth, y + cardHeight, cardX + cardWidth - radius, y + cardHeight);
+            ctx.lineTo(cardX + radius, y + cardHeight);
+            ctx.quadraticCurveTo(cardX, y + cardHeight, cardX, y + cardHeight - radius);
+            ctx.lineTo(cardX, y + radius);
+            ctx.quadraticCurveTo(cardX, y, cardX + radius, y);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+            ctx.fillText(stat.label, cardX + 40, y + 55);
+
+            ctx.textAlign = 'right';
+            const percent = stat.total > 0 ? (stat.count / stat.total) * 100 : 0;
+            ctx.fillText(`${stat.count} / ${stat.total} (${percent.toFixed(1)}%)`, cardX + cardWidth - 40, y + 55);
+
+            // Progress bar
+            const barWidth = cardWidth - 80;
+            const barHeight = 12;
+            const barX = cardX + 40;
+            const barY = y + 80;
+            const bRadius = 6;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(barX + bRadius, barY);
+            ctx.lineTo(barX + barWidth - bRadius, barY);
+            ctx.quadraticCurveTo(barX + barWidth, barY, barX + barWidth, barY + bRadius);
+            ctx.lineTo(barX + barWidth, barY + barHeight - bRadius);
+            ctx.quadraticCurveTo(barX + barWidth, barY + barHeight, barX + barWidth - bRadius, barY + barHeight);
+            ctx.lineTo(barX + bRadius, barY + barHeight);
+            ctx.quadraticCurveTo(barX, barY + barHeight, barX, barY + barHeight - bRadius);
+            ctx.lineTo(barX, barY + bRadius);
+            ctx.quadraticCurveTo(barX, barY, barX + bRadius, barY);
+            ctx.closePath();
+            ctx.fill();
+
+            if (percent > 0) {
+              const pWidth = Math.max(bRadius * 2, (barWidth * percent) / 100);
+              ctx.fillStyle = '#10b981'; // emerald-500
+              ctx.beginPath();
+              ctx.moveTo(barX + bRadius, barY);
+              ctx.lineTo(barX + pWidth - bRadius, barY);
+              ctx.quadraticCurveTo(barX + pWidth, barY, barX + pWidth, barY + bRadius);
+              ctx.lineTo(barX + pWidth, barY + barHeight - bRadius);
+              ctx.quadraticCurveTo(barX + pWidth, barY + barHeight, barX + pWidth - bRadius, barY + barHeight);
+              ctx.lineTo(barX + bRadius, barY + barHeight);
+              ctx.quadraticCurveTo(barX, barY + barHeight, barX, barY + barHeight - bRadius);
+              ctx.lineTo(barX, barY + bRadius);
+              ctx.quadraticCurveTo(barX, barY, barX + bRadius, barY);
+              ctx.closePath();
+              ctx.fill();
+            }
+          });
+
+          // Footer
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.textAlign = 'center';
+          ctx.font = '24px system-ui, -apple-system, sans-serif';
+          ctx.fillText('Generated with Travel Tracker • travel-tracker.org', width / 2, height - 60);
+
+          // Create PDF
+          const pName = user?.username || 'Traveler';
+          const dataUrl = canvas.toDataURL('image/png', 1.0);
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [width, height]
+          });
+          pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
+
+          // Try to share or save
+          const pdfBlob = pdf.output('blob');
+          const date = new Date().toISOString().split('T')[0];
+          const filename = `Travel_Summary_${pName}_${date}.pdf`;
+          const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+              files: [file],
+              title: 'My Travel Summary',
+              text: `Check out my travels on Travel Tracker!`,
+            }).then(() => resolve(true))
+              .catch((err) => {
+                if (err.name !== 'AbortError') {
+                  console.error('Share failed:', err);
+                  pdf.save(filename);
+                }
+                resolve(true);
+              });
+          } else {
+            pdf.save(filename);
+            resolve(true);
+          }
+        };
+
+        // Try to draw logo if available
+        const logo = new Image();
+        logo.src = logoImage;
+        logo.onload = () => {
+          const logoSize = 120;
+          ctx.drawImage(logo, (width - logoSize) / 2, 80, logoSize, logoSize);
+          drawContent();
+        };
+        logo.onerror = () => {
+          drawContent();
+        };
+      } catch (err) {
+        console.error('Error generating summary PDF:', err);
+        resolve(false);
+      }
+    });
+  }, [allActiveLocations, user]);
+
   // Handle Save Options
-  type SaveOption = 'image' | 'all-images' | 'csv' | 'share';
+  type SaveOption = 'image' | 'all-images' | 'csv' | 'share' | 'pdf';
 
   const handleSaveOption = useCallback(async (option: SaveOption) => {
     setIsSaveDropdownOpen(false);
@@ -1863,23 +2053,62 @@ function App() {
       document.body.removeChild(link);
       showNotification('Locations exported as 6-column CSV!', 'success');
 
+    } else if (option === 'pdf') {
+      const success = await generateSummaryPDF();
+      if (success) {
+        showNotification('Summary PDF ready!', 'success');
+      } else {
+        showNotification('Error generating PDF.', 'error');
+      }
     } else if (option === 'share') {
-      // Share my travels
-      const totalLocations = Object.values(allActiveLocations).reduce((acc, set) => acc + set.size, 0);
+      // Share my travels with breakdown
+      const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
+      const scopeLabels: Record<Scope, string> = {
+        world: '🌍 World',
+        usa: '🇺🇸 USA',
+        usaParks: '🏞️ US Parks',
+        europe: '🇪🇺 Europe',
+        china: '🇨🇳 China',
+        india: '🇮🇳 India'
+      };
+
+      const totalCounts: Record<Scope, number> = {
+        world: 177,
+        usa: 51,
+        usaParks: 63,
+        europe: 53,
+        china: 34,
+        india: 36
+      };
+
+      let breakdownText = "";
+      let totalVisited = 0;
+
+      scopes.forEach(scope => {
+        const count = allActiveLocations[scope].size;
+        const total = totalCounts[scope];
+        if (count > 0) {
+          breakdownText += `\n${scopeLabels[scope]}: ${count}/${total}`;
+          totalVisited += count;
+        }
+      });
+
+      const name = user?.username || 'Traveler';
+      const shareText = `Check out ${name}'s travels! I've visited: ${breakdownText}\n\nTrack your own travels at:`;
       const shareData = {
         title: 'My Travel Tracker',
-        text: `Check out my travels! I've visited ${totalLocations} locations across the world. #TravelTracker`,
-        url: window.location.href,
+        text: shareText,
+        url: "https://travel-tracker.org",
       };
 
       if (navigator.share) {
         navigator.share(shareData).catch((err) => console.log('Error sharing', err));
       } else {
         navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-        showNotification('Travel notes copied to clipboard!', 'success');
+        showNotification('Travel summary copied to clipboard!', 'success');
       }
     }
-  }, [saveMapAsPNG, allActiveLocations, showNotification]);
+  }, [saveMapAsPNG, generateSummaryPDF, allActiveLocations, showNotification]);
 
 
 
@@ -3286,7 +3515,19 @@ function App() {
                         onClick={() => handleSaveOption('share')}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
                       >
-                        Share My Travels
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                        </svg>
+                        Share Text
+                      </button>
+                      <button
+                        onClick={() => handleSaveOption('pdf')}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        Share PDF
                       </button>
                     </div>
                   )}
