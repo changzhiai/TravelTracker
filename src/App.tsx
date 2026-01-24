@@ -445,13 +445,24 @@ function App() {
   }, [user, currentScope]);
 
   // Save user data when selections change
+  // Save user data when selections change
   useEffect(() => {
     // Only save if we have a user, locations, AND the data currently loaded 
     // actually belongs to the current scope (prevent saving during transitions)
     if (user && activeLocations && loadedScopeRef.current === currentScope) {
-      authService.saveLocations(user.username, currentScope, activeLocations);
+      // Save current scope
+      authService.saveLocations(user.username, currentScope, allActiveLocations[currentScope]);
+
+      // Sync DB for World <-> Europe
+      // Since map state is already synced in handleLocationToggle/state updates,
+      // we just need to ensure the DB keeps up if we are in one of these scopes.
+      if (currentScope === 'world') {
+        authService.saveLocations(user.username, 'europe', allActiveLocations['europe']);
+      } else if (currentScope === 'europe') {
+        authService.saveLocations(user.username, 'world', allActiveLocations['world']);
+      }
     }
-  }, [user, currentScope, activeLocations]);
+  }, [user, currentScope, activeLocations, allActiveLocations]);
 
   const handleLoginSuccess = (username: string) => {
     // Persist welcome message intent
