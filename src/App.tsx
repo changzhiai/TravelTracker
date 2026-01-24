@@ -2754,11 +2754,11 @@ function App() {
 
   return (
     <div
-      className="flex flex-col py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
+      className="flex flex-col py-2 md:py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
       style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
-      <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-4 md:mx-0 flex-shrink-0">
+      <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-2 md:mx-0 flex-shrink-0">
         <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-2">
             <img
@@ -2923,7 +2923,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-1 space-x-4 relative pl-4 pr-0 md:pl-0 min-h-0">
+      <div className="flex flex-1 relative mx-2 md:mx-0 min-h-0 md:gap-4">
         {/* Map Container */}
         <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-3 md:pb-6">
           <div className="flex items-center mb-4 border-b pb-3 flex-wrap gap-3">
@@ -2980,7 +2980,7 @@ function App() {
                 <div className="relative" ref={selectDropdownRef}>
                   <button
                     onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
-                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
+                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-2 sm:px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
                       ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
                       : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                       }`}
@@ -3115,7 +3115,7 @@ function App() {
                 <div className="relative" ref={labelDropdownRef}>
                   <button
                     onClick={() => setIsLabelDropdownOpen(!isLabelDropdownOpen)}
-                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${labelMode !== 'none'
+                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-2 sm:px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${labelMode !== 'none'
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
                       : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                       }`}
@@ -3203,7 +3203,7 @@ function App() {
                 <div className="relative" ref={saveDropdownRef}>
                   <button
                     onClick={() => setIsSaveDropdownOpen(!isSaveDropdownOpen)}
-                    className="h-10 sm:h-12 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
+                    className="h-10 sm:h-12 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-2 sm:px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
                     title="Export options"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
