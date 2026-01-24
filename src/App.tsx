@@ -385,14 +385,49 @@ function App() {
             const next = { ...prev };
             let hasChanges = false;
 
+            // First apply all loaded data
             scopes.forEach((scope, index) => {
               const savedLocations = results[index];
-              const currentSet = prev[scope];
+              next[scope] = savedLocations;
+            });
 
-              // Only update if different to avoid re-renders
-              if (currentSet.size !== savedLocations.size ||
-                ![...savedLocations].every(x => currentSet.has(x))) {
-                next[scope] = savedLocations;
+            // Then perform 2-way sync between World and Europe
+            const worldSet = new Set(next['world']);
+            const europeSet = new Set(next['europe']);
+            let worldChanged = false;
+            let europeChanged = false;
+
+            // Sync World -> Europe
+            for (const location of worldSet) {
+              const europeName = WORLD_TO_EUROPE_MAPPING[location] || (EUROPE_COUNTRIES.has(location) ? location : null);
+              if (europeName) {
+                if (!europeSet.has(europeName)) {
+                  europeSet.add(europeName);
+                  europeChanged = true;
+                }
+              }
+            }
+
+            // Sync Europe -> World
+            for (const location of europeSet) {
+              const worldName = EUROPE_TO_WORLD_MAPPING[location] || location;
+              // Skip if "Holy See (Vatican City)" as it doesn't exist in World map
+              if (location !== "Holy See (Vatican City)") {
+                if (!worldSet.has(worldName)) {
+                  worldSet.add(worldName);
+                  worldChanged = true;
+                }
+              }
+            }
+
+            if (worldChanged) next['world'] = worldSet;
+            if (europeChanged) next['europe'] = europeSet;
+
+            // Check if anything actually changed from previous state to avoid re-renders
+            scopes.forEach(scope => {
+              const currentSet = prev[scope];
+              const nextSet = next[scope];
+              if (currentSet.size !== nextSet.size || ![...nextSet].every(x => currentSet.has(x))) {
                 hasChanges = true;
               }
             });
