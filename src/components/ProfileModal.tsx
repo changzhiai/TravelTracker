@@ -60,10 +60,10 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
 
     // Stats calculations
     const stats = [
-        { key: 'world', label: 'World', total: 177, count: activeLocations['world']?.size || 0 },
-        { key: 'usa', label: 'USA', total: 51, count: activeLocations['usa']?.size || 0 },
+        { key: 'world', label: 'World', total: 182, count: activeLocations['world']?.size || 0 },
+        { key: 'usa', label: 'USA', total: 50, count: activeLocations['usa']?.size || 0 },
         { key: 'usaParks', label: 'US National Parks', total: 63, count: activeLocations['usaParks']?.size || 0 },
-        { key: 'europe', label: 'Europe', total: 53, count: activeLocations['europe']?.size || 0 },
+        { key: 'europe', label: 'Europe', total: 51, count: activeLocations['europe']?.size || 0 },
         { key: 'china', label: 'China', total: 34, count: activeLocations['china']?.size || 0 },
         { key: 'india', label: 'India', total: 36, count: activeLocations['india']?.size || 0 },
     ];

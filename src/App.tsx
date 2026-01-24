@@ -47,7 +47,7 @@ interface TopoData extends Topology {
 }
 
 // Constants
-// Using Natural Earth 110m data which includes ~177 countries (standard for most world maps)
+// Using Natural Earth 110m data which includes 182 countries (standard for most world maps)
 // Note: Different datasets have different counts. UN recognizes 195 countries total.
 const WORLD_GEOJSON_URL = worldGeoJsonUrl;
 const USA_STATES_URL = usaStatesUrl;
@@ -153,7 +153,7 @@ function App() {
   const locationTypeLabel =
     currentScope === 'world' ? 'Countries' :
       currentScope === 'usa' ? 'States' :
-        currentScope === 'usaParks' ? 'National Parks' :
+        currentScope === 'usaParks' ? 'NPs' :
           currentScope === 'europe' ? 'Countries' :
             currentScope === 'china' ? 'Provinces' :
               'States';
@@ -539,7 +539,7 @@ function App() {
         });
       setWorldCountryFeatures(features);
       console.log(`World GeoJSON map data loaded successfully. Found ${features.length} countries (excluding Antarctica).`);
-      console.log("Note: This dataset includes ~177 countries. UN recognizes 195 countries total.");
+      console.log("Note: This dataset includes 182 countries. UN recognizes 195 countries total.");
     } catch (error) {
       console.error("Error loading world map data:", error);
       throw error;
@@ -1762,10 +1762,10 @@ function App() {
 
           // 5. Stats Cards
           const stats = [
-            { label: '🌍 World', total: 177, count: allActiveLocations['world']?.size || 0 },
-            { label: '🇺🇸 USA', total: 51, count: allActiveLocations['usa']?.size || 0 },
-            { label: '🏞️ US Parks', total: 63, count: allActiveLocations['usaParks']?.size || 0 },
-            { label: '🇪🇺 Europe', total: 53, count: allActiveLocations['europe']?.size || 0 },
+            { label: '🌍 World', total: 182, count: allActiveLocations['world']?.size || 0 },
+            { label: '🇺🇸 USA', total: 50, count: allActiveLocations['usa']?.size || 0 },
+            { label: '🏞️ US NPs', total: 63, count: allActiveLocations['usaParks']?.size || 0 },
+            { label: '🇪🇺 Europe', total: 51, count: allActiveLocations['europe']?.size || 0 },
             { label: '🇨🇳 China', total: 34, count: allActiveLocations['china']?.size || 0 },
             { label: '🇮🇳 India', total: 36, count: allActiveLocations['india']?.size || 0 },
           ];
@@ -1996,10 +1996,10 @@ function App() {
 
       // Use fixed constants for totals to ensure CSV export works even if maps aren't loaded
       const totalCounts: Record<Scope, number> = {
-        world: 177, // Natural Earth 110m standard
-        usa: 51,   // 50 States + DC
+        world: 182, // Natural Earth 110m standard
+        usa: 50,   // 50 States + DC
         usaParks: 63, // National Parks
-        europe: 53, // Approximate Europe countries
+        europe: 51, // Approximate Europe countries
         china: 34, // Provinces/SARs
         india: 36 // States + UTs
       };
@@ -2066,17 +2066,17 @@ function App() {
       const scopeLabels: Record<Scope, string> = {
         world: '🌍 World',
         usa: '🇺🇸 USA',
-        usaParks: '🏞️ US Parks',
+        usaParks: '🏞️ US NPs',
         europe: '🇪🇺 Europe',
         china: '🇨🇳 China',
         india: '🇮🇳 India'
       };
 
       const totalCounts: Record<Scope, number> = {
-        world: 177,
-        usa: 51,
+        world: 182,
+        usa: 50,
         usaParks: 63,
-        europe: 53,
+        europe: 51,
         china: 34,
         india: 36
       };
@@ -3033,9 +3033,9 @@ function App() {
       style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
-      <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-4 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-2 md:mx-0 flex-shrink-0">
-        <div className="flex items-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
-          <div className="flex items-center space-x-2">
+      <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-2.5 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-2 md:mx-0 flex-shrink-0">
+        <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
+          <div className="flex items-center space-x-1.5 flex-shrink-0">
             <img
               src={logoImage}
               alt="Travel Tracker Logo"
@@ -3044,11 +3044,11 @@ function App() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Travel Tracker</h1>
           </div>
 
-          <div className="relative w-28 sm:w-32 z-30" ref={scopeDropdownRef}>
+          <div className="relative w-32 sm:w-34 z-30 flex-shrink-0" ref={scopeDropdownRef}>
             <button
               type="button"
               onClick={() => setIsScopeDropdownOpen(prev => !prev)}
-              className="w-full text-sm py-2.5 px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 flex items-center justify-between gap-1.5 relative z-10"
+              className="w-full text-sm py-2.5 px-2 sm:px-4 border-2 border-indigo-300 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 font-semibold transition-all hover:border-indigo-400 hover:shadow-xl hover:scale-105 active:scale-100 flex items-center justify-between gap-1 relative z-10"
               aria-haspopup="listbox"
               aria-expanded={isScopeDropdownOpen}
               aria-label="Select map scope"
@@ -3091,15 +3091,15 @@ function App() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm font-medium">
-          <div className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg sm:rounded-xl border border-amber-200">
+          <div className="flex items-center space-x-0.5 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg sm:rounded-xl border border-amber-200">
             <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">{locationsCount}</span>
-            <span className="text-amber-700 font-semibold hidden sm:inline">{locationTypeLabel}</span>
+            <span className="text-amber-700 font-semibold">{locationTypeLabel}</span>
           </div>
-          <div className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg sm:rounded-xl border border-indigo-200">
+          <div className="flex items-center space-x-0.5 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg sm:rounded-xl border border-indigo-200">
             <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               {percentage}%
             </span>
-            <span className="text-indigo-700 font-semibold hidden sm:inline">{totalTypeLabel.replace('%', '')}</span>
+            <span className="text-indigo-700 font-semibold">{totalTypeLabel.replace('%', '')}</span>
           </div>
 
           {/* Auth Section */}
