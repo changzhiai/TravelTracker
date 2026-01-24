@@ -22,6 +22,7 @@ import './App.css';
 // Type definitions
 type Scope = 'world' | 'usa' | 'usaParks' | 'europe' | 'china' | 'india';
 type NotificationType = 'success' | 'error';
+type LabelMode = 'chosen' | 'unchosen' | 'all' | 'none';
 
 type ScopeOption = {
   value: Scope;
@@ -57,6 +58,32 @@ const INDIA_STATES_URL = indiaStatesUrl;
 const normalizeLocationName = (name: string) =>
   name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
 
+const EUROPE_COUNTRIES = new Set([
+  "Azerbaijan", "Albania", "Armenia", "Bosnia and Herzegovina", "Bulgaria",
+  "Cyprus", "Denmark", "Ireland", "Estonia", "Austria", "Czech Republic",
+  "Finland", "France", "Georgia", "Germany", "Greece", "Croatia", "Hungary",
+  "Iceland", "Israel", "Italy", "Latvia", "Belarus", "Lithuania", "Slovakia",
+  "Liechtenstein", "The former Yugoslav Republic of Macedonia", "Malta",
+  "Belgium", "Faroe Islands", "Andorra", "Luxembourg", "Monaco", "Montenegro",
+  "Netherlands", "Norway", "Poland", "Portugal", "Romania", "Republic of Moldova",
+  "Slovenia", "Spain", "Sweden", "Switzerland", "Turkey", "United Kingdom",
+  "Ukraine", "San Marino", "Serbia", "Holy See (Vatican City)", "Russia"
+]);
+
+const WORLD_TO_EUROPE_MAPPING: Record<string, string> = {
+  "Macedonia": "The former Yugoslav Republic of Macedonia",
+  "Moldova": "Republic of Moldova",
+  "Republic of Serbia": "Serbia",
+  "England": "United Kingdom"
+};
+
+const EUROPE_TO_WORLD_MAPPING: Record<string, string> = {
+  "The former Yugoslav Republic of Macedonia": "Macedonia",
+  "Republic of Moldova": "Moldova",
+  "Serbia": "Republic of Serbia",
+  "United Kingdom": "England"
+};
+
 function App() {
   // State management
   const [currentScope, setCurrentScope] = useState<Scope>('world');
@@ -69,7 +96,9 @@ function App() {
     india: new Set(),
   });
   const activeLocations = allActiveLocations[currentScope];
-  const [showLabels, setShowLabels] = useState(false);
+  const [labelMode, setLabelMode] = useState<LabelMode>('none');
+  const [isLabelDropdownOpen, setIsLabelDropdownOpen] = useState(false);
+  const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showListOnMobile, setShowListOnMobile] = useState(false);
@@ -87,6 +116,8 @@ function App() {
   const [profileInitialTab, setProfileInitialTab] = useState<'stats' | 'edit'>('stats');
   const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
   const saveDropdownRef = useRef<HTMLDivElement>(null);
+  const labelDropdownRef = useRef<HTMLDivElement>(null);
+  const selectDropdownRef = useRef<HTMLDivElement>(null);
 
   // Refs for D3.js
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -247,15 +278,28 @@ function App() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!isScopeDropdownOpen) return;
-      if (scopeDropdownRef.current && !scopeDropdownRef.current.contains(event.target as Node)) {
+      // Close Scope Dropdown
+      if (isScopeDropdownOpen && scopeDropdownRef.current && !scopeDropdownRef.current.contains(event.target as Node)) {
         setIsScopeDropdownOpen(false);
+      }
+      // Close Save Dropdown
+      if (isSaveDropdownOpen && saveDropdownRef.current && !saveDropdownRef.current.contains(event.target as Node)) {
+        setIsSaveDropdownOpen(false);
+      }
+      // Close Label Dropdown
+      if (labelDropdownRef.current && !labelDropdownRef.current.contains(event.target as Node)) {
+        setIsLabelDropdownOpen(false);
+      }
+      if (selectDropdownRef.current && !selectDropdownRef.current.contains(event.target as Node)) {
+        setIsSelectDropdownOpen(false);
       }
     };
 
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsScopeDropdownOpen(false);
+        if (isScopeDropdownOpen) setIsScopeDropdownOpen(false);
+        if (isSaveDropdownOpen) setIsSaveDropdownOpen(false);
+        if (isLabelDropdownOpen) setIsLabelDropdownOpen(false);
       }
     };
 
@@ -266,7 +310,7 @@ function App() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeydown);
     };
-  }, [isScopeDropdownOpen]);
+  }, [isScopeDropdownOpen, isSaveDropdownOpen]);
 
   // Notification system
   const showNotification = useCallback((message: string, type: NotificationType = 'success') => {
@@ -829,7 +873,7 @@ function App() {
           .attr("d", (d: GeoFeature) => pathRef.current!(d));
       }
 
-      if (showLabelsRef.current) {
+      if (labelModeRef.current !== 'none') {
         renderLabels();
       }
     }, 50);
@@ -856,11 +900,17 @@ function App() {
   const renderLabels = useCallback(() => {
     if (!labelGroupRef.current || !pathRef.current) return;
 
-    if (showLabelsRef.current) {
-      // Get currently selected locations
-      const selectedFeatures = selectableFeatures.filter(d =>
-        activeLocationsRef.current.has(d.properties.name)
-      );
+    const mode = labelModeRef.current;
+
+    if (mode !== 'none') {
+      // Filter features based on mode
+      const selectedFeatures = selectableFeatures.filter(d => {
+        const isSelected = activeLocationsRef.current.has(d.properties.name);
+        if (mode === 'chosen') return isSelected;
+        if (mode === 'unchosen') return !isSelected;
+        if (mode === 'all') return true;
+        return false;
+      });
 
       const selection = labelGroupRef.current.selectAll<SVGTextElement, GeoFeature>(".map-label")
         .data(selectedFeatures, (d: GeoFeature) => d.properties.name);
@@ -889,7 +939,7 @@ function App() {
         .attr("opacity", 0)
         .remove();
     } else {
-      // Hide all labels when showLabels is false
+      // Hide all labels when mode is 'none'
       labelGroupRef.current.selectAll(".map-label")
         .transition()
         .duration(300)
@@ -1012,8 +1062,8 @@ function App() {
 
   // Show hover label for a location
   const showHoverLabel = useCallback((locationName: string, isTouch: boolean = false) => {
-    // Don't show label if we just clicked (within 800ms)
-    if (Date.now() - lastClickTimeRef.current < 800) return;
+    // Don't show label if we just clicked (within 200ms)
+    if (Date.now() - lastClickTimeRef.current < 100) return;
 
     // Clear any pending hide timeout
     if (hoverLabelTimeoutRef.current) {
@@ -1333,48 +1383,53 @@ function App() {
     // Use a longer delay to batch updates and prevent visual refresh
     setTimeout(() => {
       setAllActiveLocations(prev => {
-        const currentSet = prev[currentScope];
-        const newSet = new Set(currentSet);
-        const isSelected = newSet.has(locationName);
+        const currentSet = new Set(prev[currentScope]);
+        const isSelected = currentSet.has(locationName);
 
         if (isSelected) {
-          newSet.delete(locationName);
+          currentSet.delete(locationName);
         } else {
-          newSet.add(locationName);
+          currentSet.add(locationName);
         }
 
-        // Update labels if needed (only if labels are shown)
-        if (showLabels && labelGroupRef.current && pathRef.current) {
-          const selectedFeatures = selectableFeatures.filter(d => newSet.has(d.properties.name));
-
-          labelGroupRef.current.selectAll<SVGTextElement, GeoFeature>(".map-label")
-            .data(selectedFeatures, (d: GeoFeature) => d.properties.name)
-            .join(
-              enter => enter.append("text")
-                .attr("class", "map-label")
-                .attr("transform", d => `translate(${pathRef.current!.centroid(d)})`)
-                .text(d => d.properties.name)
-                .attr("opacity", 0)
-                .transition()
-                .duration(200)
-                .attr("opacity", 1),
-              update => update,
-              exit => exit
-                .transition()
-                .duration(200)
-                .attr("opacity", 0)
-                .remove()
-            );
-        }
-
-        return {
+        const nextState: Record<Scope, Set<string>> = {
           ...prev,
-          [currentScope]: newSet
+          [currentScope]: currentSet
         };
+
+        // Sync World <-> Europe
+        if (currentScope === 'world') {
+          // Sync World -> Europe
+          const europeName = WORLD_TO_EUROPE_MAPPING[locationName] || (EUROPE_COUNTRIES.has(locationName) ? locationName : null);
+          if (europeName) {
+            const europeSet = new Set(prev['europe']);
+            if (isSelected) { // Being unselected in World
+              europeSet.delete(europeName);
+            } else { // Being selected in World
+              europeSet.add(europeName);
+            }
+            nextState['europe'] = europeSet;
+          }
+        } else if (currentScope === 'europe') {
+          // Sync Europe -> World
+          const worldName = EUROPE_TO_WORLD_MAPPING[locationName] || locationName;
+          // Skip if "Holy See (Vatican City)" as it doesn't exist in World map
+          if (locationName !== "Holy See (Vatican City)") {
+            const worldSet = new Set(prev['world']);
+            if (isSelected) { // Being unselected in Europe
+              worldSet.delete(worldName);
+            } else { // Being selected in Europe
+              worldSet.add(worldName);
+            }
+            nextState['world'] = worldSet;
+          }
+        }
+
+        return nextState;
       });
 
       // Update labels if they're enabled
-      if (showLabelsRef.current) {
+      if (labelModeRef.current !== 'none') {
         setTimeout(() => renderLabels(), 0);
       }
     }, 0); // Use setTimeout instead of requestAnimationFrame to batch better
@@ -1975,9 +2030,7 @@ function App() {
           const svg = d3.select(svgRef.current);
           svg.call(zoomRef.current.transform, d3.zoomTransform(svgRef.current));
         }
-        if (showLabels) {
-          renderLabels();
-        }
+        renderLabels();
       }
     };
 
@@ -1989,15 +2042,20 @@ function App() {
 
   // Store latest values in refs to avoid re-renders
   const activeLocationsRef = useRef<Set<string>>(new Set());
-  const showLabelsRef = useRef(false);
+  const labelModeRef = useRef<LabelMode>('none');
   const currentScopeRef = useRef<Scope>(currentScope);
 
   // Keep refs in sync with state (but don't trigger re-renders)
   useEffect(() => {
     activeLocationsRef.current = activeLocations;
+    labelModeRef.current = labelMode;
+    currentScopeRef.current = currentScope;
+  }, [activeLocations, labelMode, currentScope]);
 
-    // Update labels when active locations change
-    if (showLabelsRef.current && pathRef.current && labelGroupRef.current) {
+  // Handle updates when state changes
+  useEffect(() => {
+    // Re-render labels when active locations or mode change
+    if (pathRef.current && labelGroupRef.current) {
       renderLabels();
     }
 
@@ -2011,15 +2069,7 @@ function App() {
       parkGroupRef.current.selectAll<SVGPathElement, GeoFeature>(".park-path")
         .classed('country-highlight', (d: GeoFeature) => activeLocations.has(d.properties.name));
     }
-  }, [activeLocations, renderLabels, currentScope]);
-
-  useEffect(() => {
-    showLabelsRef.current = showLabels;
-    // Re-render labels when showLabels changes
-    if (pathRef.current && labelGroupRef.current) {
-      renderLabels();
-    }
-  }, [showLabels, renderLabels]);
+  }, [activeLocations, labelMode, renderLabels, currentScope]);
 
   useEffect(() => {
     currentScopeRef.current = currentScope;
@@ -2226,8 +2276,8 @@ function App() {
               .on("mouseenter", function (_event: MouseEvent, d: GeoFeature) {
                 // Don't show label on touch devices (mouse events can fire after touch on some browsers)
                 if (isTouchDeviceRef.current) return;
-                // Don't show label if we just clicked (within 800ms)
-                if (Date.now() - lastClickTimeRef.current < 800) return;
+                // Don't show label if we just clicked (within 200ms)
+                if (Date.now() - lastClickTimeRef.current < 200) return;
                 if (d.properties.name) {
                   showHoverLabel(d.properties.name);
                 }
@@ -2468,8 +2518,8 @@ function App() {
               .on("mouseenter", function (_event: MouseEvent, d: GeoFeature) {
                 // Don't show label on touch devices (mouse events can fire after touch on some browsers)
                 if (isTouchDeviceRef.current) return;
-                // Don't show label if we just clicked (within 800ms)
-                if (Date.now() - lastClickTimeRef.current < 800) return;
+                // Don't show label if we just clicked (within 200ms)
+                if (Date.now() - lastClickTimeRef.current < 200) return;
                 if (d.properties.name) {
                   showHoverLabel(d.properties.name);
                 }
@@ -2673,7 +2723,7 @@ function App() {
               .classed('country-highlight', (d: GeoFeature) => activeLocationsRef.current.has(d.properties.name));
           }
 
-          if (showLabelsRef.current) {
+          if (labelModeRef.current !== 'none') {
             renderLabels();
           }
         }
@@ -2927,117 +2977,270 @@ function App() {
               <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent hidden sm:block"></div>
 
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => {
-                    const allLocationNames = listItems;
+                <div className="relative" ref={selectDropdownRef}>
+                  <button
+                    onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
+                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                      : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
+                      }`}
+                    title="Selection options"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span className="hidden sm:inline">Select</span>
+                    <svg className={`w-3 h-3 transition-transform duration-200 ${isSelectDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
 
-                    if (activeLocations.size === allLocationNames.length) {
-                      // Deselect all
-                      setAllActiveLocations(prev => ({
-                        ...prev,
-                        [currentScope]: new Set()
-                      }));
-                      updatePathHighlights(allLocationNames, false);
-                      // Update list items
-                      allLocationNames.forEach(name => {
-                        const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-                        const listItem = d3.select(`#list-${normalizedName}`);
-                        if (!listItem.empty()) {
-                          listItem.classed('selected', false);
-                          const checkbox = listItem.select('input');
-                          if (!checkbox.empty()) {
-                            checkbox.property('checked', false);
-                          }
-                        }
-                      });
-                    } else {
-                      // Select all
-                      setAllActiveLocations(prev => ({
-                        ...prev,
-                        [currentScope]: new Set(allLocationNames)
-                      }));
-                      updatePathHighlights(allLocationNames, true);
-                      // Update list items
-                      allLocationNames.forEach(name => {
-                        const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-                        const listItem = d3.select(`#list-${normalizedName}`);
-                        if (!listItem.empty()) {
-                          listItem.classed('selected', true);
-                          const checkbox = listItem.select('input');
-                          if (!checkbox.empty()) {
-                            checkbox.property('checked', true);
-                          }
-                        }
-                      });
-                    }
-                  }}
-                  className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
-                    : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
-                    }`}
-                  title={activeLocations.size === currentFeatures.filter(d => d.properties.name).length && activeLocations.size > 0 ? "Deselect all locations" : "Select all locations"}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <span className="hidden sm:inline">Select All</span>
-                </button>
+                  {isSelectDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-25 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
+                      <button
+                        onClick={() => {
+                          const allLocationNames = selectableFeatures
+                            .map(f => f.properties.name)
+                            .filter((n): n is string => Boolean(n));
 
-                <button
-                  onClick={() => setShowLabels(!showLabels)}
-                  className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${showLabels
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
-                    : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
-                    }`}
-                  title="Toggle country/state labels for selected locations"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5m-5 4v10a1 1 0 001 1h6a1 1 0 001-1V4a1 1 0 00-1-1h-2"></path>
-                  </svg>
-                  <span className="hidden sm:inline">Labels</span>
-                </button>
+                          setAllActiveLocations(prev => ({
+                            ...prev,
+                            [currentScope]: new Set(allLocationNames)
+                          }));
+                          updatePathHighlights(allLocationNames, true);
+
+                          // Update list items
+                          allLocationNames.forEach(name => {
+                            const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                            const listItem = d3.select(`#list-${normalizedName}`);
+                            if (!listItem.empty()) {
+                              listItem.classed('selected', true);
+                              const checkbox = listItem.select('input');
+                              if (!checkbox.empty()) {
+                                checkbox.property('checked', true);
+                              }
+                            }
+                          });
+                          setIsSelectDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-indigo-50 transition-colors flex items-center justify-between group ${activeLocations.size === listItems.length && listItems.length > 0 ? 'bg-indigo-50/80 text-indigo-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>All</span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const allLocationNames = selectableFeatures
+                            .map(f => f.properties.name)
+                            .filter((n): n is string => Boolean(n));
+
+                          setAllActiveLocations(prev => ({
+                            ...prev,
+                            [currentScope]: new Set()
+                          }));
+                          updatePathHighlights(allLocationNames, false);
+
+                          // Update list items
+                          allLocationNames.forEach(name => {
+                            const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                            const listItem = d3.select(`#list-${normalizedName}`);
+                            if (!listItem.empty()) {
+                              listItem.classed('selected', false);
+                              const checkbox = listItem.select('input');
+                              if (!checkbox.empty()) {
+                                checkbox.property('checked', false);
+                              }
+                            }
+                          });
+                          setIsSelectDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-indigo-50 transition-colors flex items-center justify-between group ${activeLocations.size === 0 ? 'bg-indigo-50/80 text-indigo-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>None</span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const allLocationNames = selectableFeatures
+                            .map(f => f.properties.name)
+                            .filter((n): n is string => Boolean(n));
+
+                          const newSelection = new Set<string>();
+                          const locationsToHighlight: string[] = [];
+                          const locationsToUnhighlight: string[] = [];
+
+                          allLocationNames.forEach(name => {
+                            if (!activeLocations.has(name)) {
+                              newSelection.add(name);
+                              locationsToHighlight.push(name);
+                            } else {
+                              locationsToUnhighlight.push(name);
+                            }
+                          });
+
+                          setAllActiveLocations(prev => ({
+                            ...prev,
+                            [currentScope]: newSelection
+                          }));
+                          updatePathHighlights(locationsToHighlight, true);
+                          updatePathHighlights(locationsToUnhighlight, false);
+
+                          // Update list items visual state
+                          allLocationNames.forEach(name => {
+                            const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                            const listItem = d3.select(`#list-${normalizedName}`);
+                            if (!listItem.empty()) {
+                              const isSelected = newSelection.has(name);
+                              listItem.classed('selected', isSelected);
+                              const checkbox = listItem.select('input');
+                              if (!checkbox.empty()) {
+                                checkbox.property('checked', isSelected);
+                              }
+                            }
+                          });
+                          setIsSelectDropdownOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-sm text-left hover:bg-indigo-50 transition-colors flex items-center justify-between group text-gray-700"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>Reverse</span>
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative" ref={labelDropdownRef}>
+                  <button
+                    onClick={() => setIsLabelDropdownOpen(!isLabelDropdownOpen)}
+                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${labelMode !== 'none'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
+                      : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
+                      }`}
+                    title="Label options"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5m-5 4v10a1 1 0 001 1h6a1 1 0 001-1V4a1 1 0 00-1-1h-2"></path>
+                    </svg>
+                    <span className="hidden sm:inline">Labels</span>
+                    <svg className={`w-3 h-3 transition-transform duration-200 ${isLabelDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+
+                  {isLabelDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-max bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
+                      <button
+                        onClick={() => {
+                          setLabelMode('chosen');
+                          setIsLabelDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'chosen' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>Selected</span>
+                        </span>
+                        {labelMode === 'chosen' ? (
+                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        ) : (
+                          <div className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLabelMode('unchosen');
+                          setIsLabelDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'unchosen' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>Unselected</span>
+                        </span>
+                        {labelMode === 'unchosen' ? (
+                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        ) : (
+                          <div className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLabelMode('all');
+                          setIsLabelDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'all' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>All</span>
+                        </span>
+                        {labelMode === 'all' ? (
+                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        ) : (
+                          <div className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLabelMode('none');
+                          setIsLabelDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'none' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>None</span>
+                        </span>
+                        {labelMode === 'none' ? (
+                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        ) : (
+                          <div className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="relative" ref={saveDropdownRef}>
                   <button
                     onClick={() => setIsSaveDropdownOpen(!isSaveDropdownOpen)}
-                    className="h-10 sm:h-12 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
+                    className="h-10 sm:h-12 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
                     title="Export options"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
-                    <span className="hidden sm:inline">Save</span>
+                    <span className="hidden sm:inline">Export</span>
                     <svg className={`w-3 h-3 ml-0.5 transition-transform ${isSaveDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                   </button>
 
                   {isSaveDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
+                    <div className="absolute right-0 mt-2 w-max bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
                       <button
                         onClick={() => handleSaveOption('image')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
                       >
-                        <span className="text-lg">🖼️</span> Save as Image
+                        Export as Image
                       </button>
                       <button
                         onClick={() => handleSaveOption('all-images')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
                       >
-                        <span className="text-lg">🎞️</span> Save as Images
+                        Export as Images
                       </button>
                       <button
                         onClick={() => handleSaveOption('csv')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
                       >
-                        <span className="text-lg">📊</span> Save as CSV
+                        Export as CSV
                       </button>
                       <div className="h-px bg-gray-100 my-1"></div>
                       <button
                         onClick={() => handleSaveOption('share')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
                       >
-                        <span className="text-lg">🔗</span> Share My Travels
+                        Share My Travels
                       </button>
                     </div>
                   )}
@@ -3231,7 +3434,7 @@ function App() {
         isOpen={isAboutModalOpen}
         onClose={() => setIsAboutModalOpen(false)}
       />
-    </div>
+    </div >
   );
 
 
