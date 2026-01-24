@@ -8,9 +8,10 @@ interface ProfileModalProps {
     onUpdateUser: (newUsername: string) => void;
     activeLocations: Record<string, Set<string>>;
     initialTab?: 'stats' | 'edit';
+    stats?: { key: string; label: string; total: number; count: number }[];
 }
 
-export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocations, initialTab = 'stats' }: ProfileModalProps) {
+export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocations, initialTab = 'stats', stats: passedStats }: ProfileModalProps) {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -59,8 +60,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
     };
 
     // Stats calculations
-    const stats = [
-        { key: 'world', label: 'World', total: 182, count: activeLocations['world']?.size || 0 },
+    const stats = passedStats || [
+        { key: 'world', label: 'World', total: 176, count: activeLocations['world']?.size || 0 },
         { key: 'usa', label: 'USA', total: 50, count: activeLocations['usa']?.size || 0 },
         { key: 'usaParks', label: 'US National Parks', total: 63, count: activeLocations['usaParks']?.size || 0 },
         { key: 'europe', label: 'Europe', total: 51, count: activeLocations['europe']?.size || 0 },
@@ -108,8 +109,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                                 return (
                                     <div key={stat.key}>
                                         <div className="flex justify-between text-sm mb-1">
-                                            <span className="font-medium text-gray-700">{stat.label}</span>
-                                            <span className="text-gray-500">{stat.count} / {stat.total} ({percentage.toFixed(1)}%)</span>
+                                            <span className="font-medium text-gray-700">{(stat as any).fullLabel || stat.label}</span>
+                                            <span className="text-gray-500">{stat.count} / {stat.total} ({Number(percentage.toFixed(1))}%)</span>
                                         </div>
                                         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
                                             <div

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
 import { authService, type User } from './services/auth';
@@ -193,17 +193,70 @@ function App() {
             currentScope === 'china' ? 'Provinces List' :
               'States List';
 
-  const locationsCount = activeLocations.size;
-  const totalReference =
-    currentScope === 'world' ? worldCountryFeatures.length :
-      currentScope === 'usa' ? usStateFeatures.length :
-        currentScope === 'usaParks' ? usNationalParkFeatures.length :
-          currentScope === 'europe' ? europeCountryFeatures.length :
-            currentScope === 'china' ? chinaProvinceFeatures.length :
-              indiaStateFeatures.length;
+  const availableNames = useMemo(() => {
+    return new Set(selectableFeatures.map(f => f.properties.name).filter(Boolean));
+  }, [selectableFeatures]);
+
+  const locationsCount = useMemo(() => {
+    let count = 0;
+    activeLocations.forEach(name => {
+      if (availableNames.has(name)) {
+        count++;
+      }
+    });
+    return count;
+  }, [activeLocations, availableNames]);
+
+  const totalReference = availableNames.size;
   const percentage = totalReference > 0
-    ? ((locationsCount / totalReference) * 100).toFixed(1)
-    : '0.0';
+    ? Number(((locationsCount / totalReference) * 100).toFixed(1))
+    : 0;
+
+  const profileStats = useMemo(() => {
+    const scopes: { key: Scope; label: string; unit: string; baselineTotal: number; emoji: string }[] = [
+      { key: 'world', label: 'World', unit: 'Countries', baselineTotal: 176, emoji: '🌍' },
+      { key: 'usa', label: 'USA', unit: 'States', baselineTotal: 50, emoji: '🇺🇸' },
+      { key: 'usaParks', label: 'US National Parks', unit: 'Parks', baselineTotal: 63, emoji: '🏞️' },
+      { key: 'europe', label: 'Europe', unit: 'Countries', baselineTotal: 51, emoji: '🇪🇺' },
+      { key: 'china', label: 'China', unit: 'Provinces', baselineTotal: 34, emoji: '🇨🇳' },
+      { key: 'india', label: 'India', unit: 'States', baselineTotal: 36, emoji: '🇮🇳' }
+    ];
+
+    return scopes.map(scope => {
+      const features =
+        scope.key === 'world' ? worldCountryFeatures :
+          scope.key === 'usa' ? usStateFeatures :
+            scope.key === 'usaParks' ? usNationalParkFeatures :
+              scope.key === 'europe' ? europeCountryFeatures :
+                scope.key === 'china' ? chinaProvinceFeatures :
+                  indiaStateFeatures;
+
+      let count = 0;
+      let total = scope.baselineTotal;
+
+      // If map is loaded, use exact unique names from map
+      if (features && features.length > 0) {
+        const names = new Set(features.map(f => f.properties.name).filter(Boolean));
+        allActiveLocations[scope.key].forEach(name => {
+          if (names.has(name)) count++;
+        });
+        total = names.size;
+      } else {
+        // Fallback: use set size but filter out (optional: could be cleaner if we just used set size)
+        count = allActiveLocations[scope.key].size;
+      }
+
+      return {
+        key: scope.key,
+        label: scope.label,
+        emojiLabel: `${scope.emoji} ${scope.label}`,
+        fullLabel: `${scope.label} (${scope.unit})`,
+        unit: scope.unit,
+        total,
+        count
+      };
+    });
+  }, [worldCountryFeatures, usStateFeatures, usNationalParkFeatures, europeCountryFeatures, chinaProvinceFeatures, indiaStateFeatures, allActiveLocations]);
 
   const renderScopeIcon = (option: ScopeOption) => {
     if (option.iconType === 'flag' && option.flagCode) {
@@ -525,21 +578,22 @@ function App() {
       const features = (geoJsonData.features as GeoFeature[])
         .filter(d => d.properties.name && d.properties.name !== 'Antarctica')
         .map(feature => {
+          let name = String(feature.properties.name).trim();
           // Update Taiwan label to Taiwan (China)
-          if (feature.properties.name === 'Taiwan') {
-            return {
-              ...feature,
-              properties: {
-                ...feature.properties,
-                name: 'Taiwan (China)'
-              }
-            };
+          if (name === 'Taiwan') {
+            name = 'Taiwan (China)';
           }
-          return feature;
+          return {
+            ...feature,
+            properties: {
+              ...feature.properties,
+              name
+            }
+          };
         });
       setWorldCountryFeatures(features);
       console.log(`World GeoJSON map data loaded successfully. Found ${features.length} countries (excluding Antarctica).`);
-      console.log("Note: This dataset includes 182 countries. UN recognizes 195 countries total.");
+      console.log("Note: This dataset includes 176 unique countries. UN recognizes 195 countries total.");
     } catch (error) {
       console.error("Error loading world map data:", error);
       throw error;
@@ -572,7 +626,8 @@ function App() {
 
       // Filter to only include the 50 states
       const filteredFeatures = features.filter(d => {
-        const name = d.properties.name;
+        const name = d.properties.name ? String(d.properties.name).trim() : null;
+        if (name) d.properties.name = name; // Update in place to ensure consistency
         return name && usStates.has(name);
       });
 
@@ -595,7 +650,7 @@ function App() {
       const features = (geoJsonData.features as GeoFeature[])
         .filter(d => d.properties && d.properties.name && d.geometry)
         .map(feature => {
-          const normalizedName = String(feature.properties?.name ?? 'Unknown Park');
+          const normalizedName = String(feature.properties?.name ?? 'Unknown Park').trim();
           const friendlyName = normalizedName === 'American Samoa (National Park of American Samoa)'
             ? 'American Samoa'
             : normalizedName;
@@ -649,12 +704,9 @@ function App() {
         .map(feature => {
           const props = feature.properties;
           // The TopoJSON uses "NAME" property, ensure we have "name"
-          if (!props.name && props.NAME) {
-            props.name = String(props.NAME);
-          }
-          if (!props.name || typeof props.name !== 'string') {
-            props.name = String(props.name || props.NAME || 'Unknown');
-          }
+          let name = String(props.name || props.NAME || 'Unknown').trim();
+
+          props.name = name;
           return feature as GeoFeature;
         });
 
@@ -695,10 +747,9 @@ function App() {
         })
         .map(feature => {
           const props = feature.properties;
-          // Ensure name property exists (this data source already has English names)
-          if (!props.name || typeof props.name !== 'string') {
-            props.name = String(props.name || 'Unknown');
-          }
+          // Ensure name property exists and is trimmed
+          const name = String(props.name || 'Unknown').trim();
+          props.name = name;
           return feature as GeoFeature;
         });
 
@@ -760,12 +811,12 @@ function App() {
         })
         .map(feature => {
           const props = feature.properties;
-          // Use st_nm as the name property
-          const stateName = props.st_nm || 'Unknown';
+          // Use st_nm as the name property and trim it
+          const stateName = String(props.st_nm || 'Unknown').trim();
           return {
             ...feature,
             properties: {
-              name: String(stateName)
+              name: stateName
             }
           } as GeoFeature;
         });
@@ -908,7 +959,7 @@ function App() {
 
       const svg = d3.select(svgRef.current!);
       svg.transition()
-        .duration(750)
+        .duration(1)
         .call(zoomRef.current!.transform, initialTransformRef.current);
 
       if (currentFeatures.length > 0 && pathRef.current) {
@@ -1004,6 +1055,13 @@ function App() {
   useEffect(() => {
     isTouchDeviceRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }, []);
+
+  // Auto-reset view when map becomes visible on mobile
+  useEffect(() => {
+    if (!showListOnMobile && window.innerWidth < 1024) {
+      resetView();
+    }
+  }, [showListOnMobile, resetView]);
 
   // Prevent text selection on map container
   useEffect(() => {
@@ -1721,8 +1779,10 @@ function App() {
   const generateSummaryPDF = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
       try {
-        const width = 1080;
-        const height = 1350;
+        // A4 proportions: 210mm x 297mm
+        // For high quality, we'll use a 1240x1754 canvas (roughly 150 DPI)
+        const width = 1240;
+        const height = 1754;
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
@@ -1742,10 +1802,10 @@ function App() {
         // 2. Add some subtle patterns/circles
         ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.beginPath();
-        ctx.arc(width * 0.8, height * 0.2, 300, 0, Math.PI * 2);
+        ctx.arc(width * 0.8, height * 0.2, 350, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(width * 0.1, height * 0.8, 200, 0, Math.PI * 2);
+        ctx.arc(width * 0.1, height * 0.8, 250, 0, Math.PI * 2);
         ctx.fill();
 
         // 3. Setup drawing flow
@@ -1753,34 +1813,30 @@ function App() {
           // 4. Title
           ctx.fillStyle = 'white';
           ctx.textAlign = 'center';
-          ctx.font = 'bold 60px system-ui, -apple-system, sans-serif';
-          ctx.fillText('Travel Tracker', width / 2, 260);
+          ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
+          ctx.fillText('Travel Tracker', width / 2, 320);
 
-          ctx.font = '36px system-ui, -apple-system, sans-serif';
+          ctx.font = '42px system-ui, -apple-system, sans-serif';
           const name = user?.username || 'Traveler';
-          ctx.fillText(`Travel Summary for ${name}`, width / 2, 320);
+          ctx.fillText(`Travel Summary for ${name}`, width / 2, 400);
 
-          // 5. Stats Cards
-          const stats = [
-            { label: '🌍 World', total: 182, count: allActiveLocations['world']?.size || 0 },
-            { label: '🇺🇸 USA', total: 50, count: allActiveLocations['usa']?.size || 0 },
-            { label: '🏞️ US NPs', total: 63, count: allActiveLocations['usaParks']?.size || 0 },
-            { label: '🇪🇺 Europe', total: 51, count: allActiveLocations['europe']?.size || 0 },
-            { label: '🇨🇳 China', total: 34, count: allActiveLocations['china']?.size || 0 },
-            { label: '🇮🇳 India', total: 36, count: allActiveLocations['india']?.size || 0 },
-          ];
+          const stats = profileStats.map(s => ({
+            label: s.emojiLabel,
+            total: s.total,
+            count: s.count
+          }));
 
-          const startY = 420;
-          const cardHeight = 120;
-          const cardWidth = 800;
+          const startY = 520;
+          const cardHeight = 140;
+          const cardWidth = 940;
           const cardX = (width - cardWidth) / 2;
 
           stats.forEach((stat, i) => {
-            const y = startY + (i * 140);
+            const y = startY + (i * 170);
 
             // Card background (simulating roundRect)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-            const radius = 20;
+            const radius = 25;
             ctx.beginPath();
             ctx.moveTo(cardX + radius, y);
             ctx.lineTo(cardX + cardWidth - radius, y);
@@ -1801,19 +1857,20 @@ function App() {
             // Labels
             ctx.fillStyle = 'white';
             ctx.textAlign = 'left';
-            ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
-            ctx.fillText(stat.label, cardX + 40, y + 55);
+            ctx.font = 'bold 42px system-ui, -apple-system, sans-serif';
+            ctx.fillText(stat.label, cardX + 50, y + 65);
 
             ctx.textAlign = 'right';
             const percent = stat.total > 0 ? (stat.count / stat.total) * 100 : 0;
-            ctx.fillText(`${stat.count} / ${stat.total} (${percent.toFixed(1)}%)`, cardX + cardWidth - 40, y + 55);
+            const percentFormatted = Number(percent.toFixed(1));
+            ctx.fillText(`${stat.count} / ${stat.total} (${percentFormatted}%)`, cardX + cardWidth - 50, y + 65);
 
             // Progress bar
-            const barWidth = cardWidth - 80;
-            const barHeight = 12;
-            const barX = cardX + 40;
-            const barY = y + 80;
-            const bRadius = 6;
+            const barWidth = cardWidth - 100;
+            const barHeight = 16;
+            const barX = cardX + 50;
+            const barY = y + 95;
+            const bRadius = 8;
 
             ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.beginPath();
@@ -1850,18 +1907,42 @@ function App() {
           // Footer
           ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
           ctx.textAlign = 'center';
-          ctx.font = '24px system-ui, -apple-system, sans-serif';
-          ctx.fillText('Generated with Travel Tracker • travel-tracker.org', width / 2, height - 60);
+          const footerFontSize = 24;
+          ctx.font = `${footerFontSize}px system-ui, -apple-system, sans-serif`;
+          const prefix = 'Generated by Travel Tracker: ';
+          const urlStr = 'https://travel-tracker.org';
+          const footerText = prefix + urlStr;
+          ctx.fillText(footerText, width / 2, height - 80);
+
+          const fullTextWidth = ctx.measureText(footerText).width;
+          const urlWidth = ctx.measureText(urlStr).width;
 
           // Create PDF
           const pName = user?.username || 'Traveler';
-          const dataUrl = canvas.toDataURL('image/png', 1.0);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
           const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'px',
-            format: [width, height]
+            format: 'a4'
           });
-          pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
+
+          // jsPDF 'a4' is 595.28 x 841.89 pixels in default 'px' unit
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+
+          pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+
+          // Add clickable link overlay
+          const scaleX = pdfWidth / width;
+          const scaleY = pdfHeight / height;
+
+          const startOfTextPx = (pdfWidth / 2) - ((fullTextWidth * scaleX) / 2);
+          const linkXPx = startOfTextPx + (ctx.measureText(prefix).width * scaleX);
+          const linkYPx = (height - 80 - footerFontSize) * scaleY; // Top of text
+          const linkWidthPx = urlWidth * scaleX;
+          const linkHeightPx = footerFontSize * scaleY;
+
+          pdf.link(linkXPx, linkYPx, linkWidthPx, linkHeightPx, { url: urlStr });
 
           // Try to share or save
           const pdfBlob = pdf.output('blob');
@@ -1873,7 +1954,7 @@ function App() {
             navigator.share({
               files: [file],
               title: 'My Travel Summary',
-              text: `Check out my travels on Travel Tracker!`,
+              text: `Track your own travels on Travel Tracker: https://travel-tracker.org`,
             }).then(() => resolve(true))
               .catch((err) => {
                 if (err.name !== 'AbortError') {
@@ -1975,37 +2056,8 @@ function App() {
 
     } else if (option === 'csv') {
       // Save as CSV with 6 columns
-      const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
-      const scopeLabels: Record<Scope, string> = {
-        world: 'World',
-        usa: 'USA',
-        usaParks: 'US National Parks',
-        europe: 'Europe',
-        china: 'China',
-        india: 'India'
-      };
-
-      const scopeUnits: Record<Scope, string> = {
-        world: 'countries',
-        usa: 'states',
-        usaParks: 'parks',
-        europe: 'countries',
-        china: 'provinces',
-        india: 'states'
-      };
-
-      // Use fixed constants for totals to ensure CSV export works even if maps aren't loaded
-      const totalCounts: Record<Scope, number> = {
-        world: 182, // Natural Earth 110m standard
-        usa: 50,   // 50 States + DC
-        usaParks: 63, // National Parks
-        europe: 51, // Approximate Europe countries
-        china: 34, // Provinces/SARs
-        india: 36 // States + UTs
-      };
-
       // Prepare lists
-      const lists: Record<Scope, string[]> = {
+      const lists: Record<string, string[]> = {
         world: Array.from(allActiveLocations.world),
         usa: Array.from(allActiveLocations.usa),
         usaParks: Array.from(allActiveLocations.usaParks),
@@ -2015,17 +2067,16 @@ function App() {
       };
 
       // Header Row (Scope Names)
-      const headerRow = scopes.map(scope => `"${scopeLabels[scope]}"`).join(",");
+      const headerRow = profileStats.map(s => `"${s.label}"`).join(",");
 
       // Count Row (Summary)
-      const countRow = scopes.map(scope => {
-        const count = lists[scope].length;
-        const total = totalCounts[scope];
-        const percent = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
-        const unit = scopeUnits[scope];
-        const scopeNameLower = scopeLabels[scope].toLowerCase();
+      const countRow = profileStats.map(stats => {
+        const percent = stats.total > 0 ? (stats.count / stats.total) * 100 : 0;
+        const percentFormatted = Number(percent.toFixed(1));
+        const unit = stats.unit.toLowerCase();
+        const scopeNameLower = stats.label.toLowerCase();
 
-        return `"Total: ${count} ${unit} ${percent}% ${scopeNameLower}"`;
+        return `"Total: ${stats.count} ${unit} ${percentFormatted}% ${scopeNameLower}"`;
       }).join(",");
 
       // Find max rows needed
@@ -2037,8 +2088,8 @@ function App() {
 
       // Data Rows
       for (let i = 0; i < maxRows; i++) {
-        const rowData = scopes.map(scope => {
-          const location = lists[scope][i];
+        const rowData = profileStats.map(s => {
+          const location = lists[s.key][i];
           return location ? `"${location}"` : ""; // Handle empty cells
         });
         csvContent += rowData.join(",") + "\n";
@@ -2062,49 +2113,29 @@ function App() {
       }
     } else if (option === 'share') {
       // Share my travels with breakdown
-      const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
-      const scopeLabels: Record<Scope, string> = {
-        world: '🌍 World',
-        usa: '🇺🇸 USA',
-        usaParks: '🏞️ US NPs',
-        europe: '🇪🇺 Europe',
-        china: '🇨🇳 China',
-        india: '🇮🇳 India'
-      };
-
-      const totalCounts: Record<Scope, number> = {
-        world: 182,
-        usa: 50,
-        usaParks: 63,
-        europe: 51,
-        china: 34,
-        india: 36
-      };
-
       let breakdownText = "";
-      let totalVisited = 0;
-
-      scopes.forEach(scope => {
-        const count = allActiveLocations[scope].size;
-        const total = totalCounts[scope];
-        if (count > 0) {
-          breakdownText += `\n${scopeLabels[scope]}: ${count}/${total}`;
-          totalVisited += count;
+      profileStats.forEach(stats => {
+        if (stats.count > 0) {
+          breakdownText += `\n${stats.emojiLabel}: ${stats.count}/${stats.total}`;
         }
       });
 
       const name = user?.username || 'Traveler';
-      const shareText = `Check out ${name}'s travels! I've visited: ${breakdownText}\n\nTrack your own travels at:`;
+      const shareText = `Check out ${name}'s travels! I've visited: ${breakdownText}\n\nTrack your own travels on Travel Tracker: https://travel-tracker.org`;
       const shareData = {
-        title: 'My Travel Tracker',
+        title: `Travel Summary.\n`,
         text: shareText,
-        url: "https://travel-tracker.org",
       };
 
       if (navigator.share) {
-        navigator.share(shareData).catch((err) => console.log('Error sharing', err));
+        navigator.share(shareData).catch((err) => {
+          if (err.name !== 'AbortError') {
+            navigator.clipboard.writeText(shareText);
+            showNotification('Summary copied to clipboard!', 'success');
+          }
+        });
       } else {
-        navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        navigator.clipboard.writeText(shareText);
         showNotification('Travel summary copied to clipboard!', 'success');
       }
     }
@@ -3017,15 +3048,17 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentScope, currentFeatures.length]);
 
-  const listItems: string[] = selectableFeatures
-    .map(d => d.properties.name)
-    .filter((name): name is string => Boolean(name));
+  const listItems: string[] = useMemo(() => {
+    const names = new Set(selectableFeatures
+      .map(d => d.properties.name)
+      .filter((name): name is string => Boolean(name)));
+    return Array.from(names).sort();
+  }, [selectableFeatures]);
 
   // Filter locations based on search
-  const filteredLocations = listItems
-    .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .slice()
-    .sort();
+  const filteredLocations = useMemo(() => {
+    return listItems.filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [listItems, searchQuery]);
 
   return (
     <div
@@ -3201,13 +3234,13 @@ function App() {
       <div className="flex flex-1 relative mx-2 md:mx-0 min-h-0 md:gap-4">
         {/* Map Container */}
         <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-3 md:pb-6">
-          <div className="flex items-center mb-4 border-b pb-3 flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
+          <div className="flex items-center mb-2 sm:mb-4 border-b pb-2 sm:pb-3 flex-wrap gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
               {/* Mobile List Toggle Button */}
               <button
                 onClick={() => setShowListOnMobile(!showListOnMobile)}
-                className="lg:hidden flex items-center justify-center w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
+                className="lg:hidden flex items-center justify-center w-9 h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
                 title="Toggle locations list"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -3216,34 +3249,34 @@ function App() {
               </button>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1 bg-gradient-to-r from-slate-50 to-gray-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-gradient-to-r from-slate-50 to-gray-50 p-1 sm:p-1.5 rounded-xl border border-slate-200 shadow-sm">
                 <button
                   onClick={handleZoomIn}
-                  className="p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
+                  className="p-1.5 sm:p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
                   title="Zoom In"
                 >
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-4 h-4 sm:w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
                   </svg>
                 </button>
 
                 <button
                   onClick={handleZoomOut}
-                  className="p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
+                  className="p-1.5 sm:p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
                   title="Zoom Out"
                 >
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-4 h-4 sm:w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path>
                   </svg>
                 </button>
 
                 <button
                   onClick={resetView}
-                  className="p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
+                  className="p-1.5 sm:p-2 hover:bg-white rounded-lg shadow-md transition-all hover:scale-110 active:scale-95"
                   title="Reset View (Return to initial position)"
                 >
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-4 h-4 sm:w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 0a8.001 8.001 0 01-15.356 2M4 4h5"></path>
                   </svg>
                 </button>
@@ -3255,13 +3288,13 @@ function App() {
                 <div className="relative" ref={selectDropdownRef}>
                   <button
                     onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
-                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-2 sm:px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
+                    className={`h-9 sm:h-12 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-4 text-xs sm:text-sm rounded-xl transition-colors transition-shadow whitespace-nowrap font-semibold shadow-md hover:shadow-lg ${activeLocations.size === listItems.length && activeLocations.size > 0
                       ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
                       : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                       }`}
                     title="Selection options"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-3.5 h-3.5 sm:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <span className="hidden sm:inline">Select</span>
@@ -3271,22 +3304,39 @@ function App() {
                   </button>
 
                   {isSelectDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-25 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
+                    <div className="absolute left-0 sm:right-0 mt-2 w-max bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
                       <button
                         onClick={() => {
-                          const allLocationNames = selectableFeatures
-                            .map(f => f.properties.name)
-                            .filter((n): n is string => Boolean(n));
+                          const allNames = new Set(listItems);
 
-                          setAllActiveLocations(prev => ({
-                            ...prev,
-                            [currentScope]: new Set(allLocationNames)
-                          }));
-                          updatePathHighlights(allLocationNames, true);
+                          setAllActiveLocations(prev => {
+                            const next = { ...prev };
+                            next[currentScope] = allNames;
 
-                          // Update list items
-                          allLocationNames.forEach(name => {
-                            const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                            // Sync logic for Select All
+                            if (currentScope === 'world') {
+                              const europeSet = new Set(prev['europe']);
+                              allNames.forEach(name => {
+                                const europeName = WORLD_TO_EUROPE_MAPPING[name] || (EUROPE_COUNTRIES.has(name) ? name : null);
+                                if (europeName) europeSet.add(europeName);
+                              });
+                              next['europe'] = europeSet;
+                            } else if (currentScope === 'europe') {
+                              const worldSet = new Set(prev['world']);
+                              allNames.forEach(name => {
+                                const worldName = EUROPE_TO_WORLD_MAPPING[name] || name;
+                                if (name !== "Holy See (Vatican City)") worldSet.add(worldName);
+                              });
+                              next['world'] = worldSet;
+                            }
+                            return next;
+                          });
+
+                          updatePathHighlights(listItems, true);
+
+                          // Update list items visual state
+                          listItems.forEach(name => {
+                            const normalizedName = normalizeLocationName(name);
                             const listItem = d3.select(`#list-${normalizedName}`);
                             if (!listItem.empty()) {
                               listItem.classed('selected', true);
@@ -3301,24 +3351,42 @@ function App() {
                         className={`w-full px-3 py-2 text-sm text-left hover:bg-indigo-50 transition-colors flex items-center justify-between group ${activeLocations.size === listItems.length && listItems.length > 0 ? 'bg-indigo-50/80 text-indigo-700 font-semibold' : 'text-gray-700'}`}
                       >
                         <span className="flex items-center gap-2">
-                          <span>All</span>
+                          <span>Select All</span>
                         </span>
                       </button>
                       <button
                         onClick={() => {
-                          const allLocationNames = selectableFeatures
-                            .map(f => f.properties.name)
-                            .filter((n): n is string => Boolean(n));
+                          const emptySet = new Set<string>();
 
-                          setAllActiveLocations(prev => ({
-                            ...prev,
-                            [currentScope]: new Set()
-                          }));
-                          updatePathHighlights(allLocationNames, false);
+                          setAllActiveLocations(prev => {
+                            const next = { ...prev };
 
-                          // Update list items
-                          allLocationNames.forEach(name => {
-                            const normalizedName = name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                            // Sync logic for Select None
+                            if (currentScope === 'world') {
+                              const europeSet = new Set(prev['europe']);
+                              prev['world'].forEach(name => {
+                                const europeName = WORLD_TO_EUROPE_MAPPING?.[name] || (EUROPE_COUNTRIES.has(name) ? name : null);
+                                if (europeName) europeSet.delete(europeName);
+                              });
+                              next['europe'] = europeSet;
+                            } else if (currentScope === 'europe') {
+                              const worldSet = new Set(prev['world']);
+                              prev['europe'].forEach(name => {
+                                const worldName = EUROPE_TO_WORLD_MAPPING[name] || name;
+                                worldSet.delete(worldName);
+                              });
+                              next['world'] = worldSet;
+                            }
+
+                            next[currentScope] = emptySet;
+                            return next;
+                          });
+
+                          updatePathHighlights(listItems, false);
+
+                          // Update list items visual state
+                          listItems.forEach(name => {
+                            const normalizedName = normalizeLocationName(name);
                             const listItem = d3.select(`#list-${normalizedName}`);
                             if (!listItem.empty()) {
                               listItem.classed('selected', false);
@@ -3333,7 +3401,7 @@ function App() {
                         className={`w-full px-3 py-2 text-sm text-left hover:bg-indigo-50 transition-colors flex items-center justify-between group ${activeLocations.size === 0 ? 'bg-indigo-50/80 text-indigo-700 font-semibold' : 'text-gray-700'}`}
                       >
                         <span className="flex items-center gap-2">
-                          <span>None</span>
+                          <span>Select None</span>
                         </span>
                       </button>
                       <button
@@ -3380,7 +3448,7 @@ function App() {
                         className="w-full px-3 py-2 text-sm text-left hover:bg-indigo-50 transition-colors flex items-center justify-between group text-gray-700"
                       >
                         <span className="flex items-center gap-2">
-                          <span>Reverse</span>
+                          <span>Select Inverse</span>
                         </span>
                       </button>
                     </div>
@@ -3390,13 +3458,13 @@ function App() {
                 <div className="relative" ref={labelDropdownRef}>
                   <button
                     onClick={() => setIsLabelDropdownOpen(!isLabelDropdownOpen)}
-                    className={`h-10 sm:h-12 flex items-center gap-1.5 px-2 sm:px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${labelMode !== 'none'
+                    className={`h-9 sm:h-12 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-4 text-xs sm:text-sm rounded-xl transition-colors transition-shadow whitespace-nowrap font-semibold shadow-md hover:shadow-lg ${labelMode !== 'none'
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
                       : 'bg-gradient-to-r from-slate-100 to-gray-100 hover:from-slate-200 hover:to-gray-200 text-slate-700'
                       }`}
                     title="Label options"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-3.5 h-3.5 sm:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5m-5 4v10a1 1 0 001 1h6a1 1 0 001-1V4a1 1 0 00-1-1h-2"></path>
                     </svg>
                     <span className="hidden sm:inline">Labels</span>
@@ -3409,51 +3477,14 @@ function App() {
                     <div className="absolute right-0 mt-2 w-max bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-100 py-1 z-50 transform origin-top-right transition-all">
                       <button
                         onClick={() => {
-                          setLabelMode('chosen');
-                          setIsLabelDropdownOpen(false);
-                        }}
-                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'chosen' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>Selected</span>
-                        </span>
-                        {labelMode === 'chosen' ? (
-                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        ) : (
-                          <div className="w-5 h-5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLabelMode('unchosen');
-                          setIsLabelDropdownOpen(false);
-                        }}
-                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'unchosen' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>Unselected</span>
-                        </span>
-                        {labelMode === 'unchosen' ? (
-                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        ) : (
-                          <div className="w-5 h-5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
                           setLabelMode('all');
                           setIsLabelDropdownOpen(false);
                         }}
                         className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'all' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
                       >
                         <span className="flex items-center gap-2">
-                          <span>All</span>
+                          <span>Label All</span>
                         </span>
-                        {labelMode === 'all' ? (
-                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        ) : (
-                          <div className="w-5 h-5" />
-                        )}
                       </button>
                       <button
                         onClick={() => {
@@ -3463,13 +3494,30 @@ function App() {
                         className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'none' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
                       >
                         <span className="flex items-center gap-2">
-                          <span>None</span>
+                          <span>Label None</span>
                         </span>
-                        {labelMode === 'none' ? (
-                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        ) : (
-                          <div className="w-5 h-5" />
-                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLabelMode('chosen');
+                          setIsLabelDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'chosen' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>Label Selected</span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLabelMode('unchosen');
+                          setIsLabelDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group ${labelMode === 'unchosen' ? 'bg-emerald-50/80 text-emerald-700 font-semibold' : 'text-gray-700'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>Label Inverse</span>
+                        </span>
                       </button>
                     </div>
                   )}
@@ -3478,10 +3526,10 @@ function App() {
                 <div className="relative" ref={saveDropdownRef}>
                   <button
                     onClick={() => setIsSaveDropdownOpen(!isSaveDropdownOpen)}
-                    className="h-10 sm:h-12 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-2 sm:px-4 text-sm rounded-xl transition-all font-semibold shadow-md hover:shadow-lg"
+                    className="h-9 sm:h-12 flex items-center gap-1 sm:gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-1.5 sm:px-4 text-xs sm:text-sm rounded-xl transition-colors transition-shadow whitespace-nowrap font-semibold shadow-md hover:shadow-lg"
                     title="Export options"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-3.5 h-3.5 sm:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
                     <span className="hidden sm:inline">Export</span>
@@ -3714,6 +3762,7 @@ function App() {
         onUpdateUser={(newUsername) => user && setUser({ ...user, username: newUsername })}
         activeLocations={allActiveLocations}
         initialTab={profileInitialTab}
+        stats={profileStats}
       />
 
       {/* About Modal */}
