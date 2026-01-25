@@ -5,7 +5,7 @@
     scroll-behavior: smooth;
     overflow-x: hidden;
   }
-  
+
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -15,27 +15,27 @@
     overflow-x: hidden;
     position: relative;
   }
-  
+
   /* Mobile-specific viewport and safe area handling */
   @media (max-width: 768px) {
     html {
       height: 100%;
       height: -webkit-fill-available;
     }
-    
+
     body {
       min-height: -webkit-fill-available;
       min-height: 100dvh;
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
-    
+
     #root {
       min-height: -webkit-fill-available;
       min-height: 100dvh;
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
   }
-  
+
   #root {
     min-height: max(100vh, var(--app-height, 100dvh));
     display: flex;
@@ -44,6 +44,7 @@
 }
 
 @layer components {
+
   /* Default subtle fill for unselected countries/states: Light gray/blue */
   .country-path {
     fill: #E8EDF1;
@@ -55,17 +56,20 @@
 
   /* Highlight path on hover */
   .country-path:hover {
-    fill: #c7d2fe; /* Light indigo on hover */
+    fill: #c7d2fe;
+    /* Light indigo on hover */
     stroke-width: 1px;
   }
 
   .country-path-hovered-by-list {
-    fill: #c7d2fe !important; /* Match map hover color */
+    fill: #c7d2fe !important;
+    /* Match map hover color */
     stroke-width: 1px;
   }
 
   .park-path {
-    fill: rgba(59, 130, 246, 0.35); /* translucent indigo */
+    fill: rgba(59, 130, 246, 0.35);
+    /* translucent indigo */
     stroke: #1d4ed8;
     stroke-width: 1.2px;
     cursor: pointer;
@@ -73,8 +77,10 @@
   }
 
   .park-path:hover {
-    fill: rgba(239, 68, 68, 0.6); /* Light red on hover */
-    stroke: #dc2626; /* Darker red stroke */
+    fill: rgba(239, 68, 68, 0.6);
+    /* Light red on hover */
+    stroke: #dc2626;
+    /* Darker red stroke */
     stroke-width: 1.5px;
   }
 
@@ -108,8 +114,10 @@
 
   /* Custom class for the active/clicked path (Vibrant Emerald) */
   .country-highlight {
-    fill: #10b981 !important; /* Tailwind emerald-500 */
-    stroke: #047857; /* Darker emerald border */
+    fill: #10b981 !important;
+    /* Tailwind emerald-500 */
+    stroke: #047857;
+    /* Darker emerald border */
     stroke-width: 1px;
     filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
   }
@@ -124,10 +132,12 @@
     border-radius: 8px;
     margin: 2px 0;
   }
+
   .country-list-item:hover {
     background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
     transform: translateX(4px);
   }
+
   .country-list-item.selected {
     background: linear-gradient(90deg, #d1fae5 0%, #a7f3d0 100%);
     font-weight: 600;
@@ -138,7 +148,8 @@
   /* Map Labels */
   .map-label {
     font-size: 10px;
-    pointer-events: none; /* Allows clicks to pass through to the map path */
+    pointer-events: none;
+    /* Allows clicks to pass through to the map path */
     fill: #374151;
     font-weight: 500;
     text-anchor: middle;
@@ -154,7 +165,7 @@
     min-height: 0;
     z-index: 0;
   }
-  
+
   #map-container svg {
     display: block;
     width: 100%;
@@ -164,11 +175,11 @@
     left: 0;
     z-index: 1;
   }
-  
+
   #map-group {
     z-index: 1;
   }
-  
+
   #label-group {
     z-index: 2;
   }
@@ -186,14 +197,14 @@
     padding-right: 2.75rem;
     cursor: pointer;
   }
-  
+
   .custom-select option {
     padding: 12px;
     background: white;
     color: #1f2937;
     font-weight: 500;
   }
-  
+
   .custom-select option:hover {
     background: #f3f4f6;
   }
@@ -208,6 +219,7 @@
       opacity: 0;
       transform: translateX(-100px);
     }
+
     to {
       opacity: 1;
       transform: translateX(0);

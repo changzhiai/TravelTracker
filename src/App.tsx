@@ -377,17 +377,19 @@ function App() {
       : '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
 
     const notification = document.createElement('div');
-    notification.className = `flex items-center ${color} text-white text-sm font-bold px-4 py-3 rounded-lg shadow-lg mb-3 transform translate-x-full transition-all duration-300`;
+    notification.className = `flex items-center ${color} text-white text-sm font-bold px-4 py-3 rounded-lg shadow-lg mb-3 opacity-0 transition-opacity duration-300`;
     notification.innerHTML = icon + `<span>${message}</span>`;
 
     container.prepend(notification);
 
     setTimeout(() => {
-      notification.style.transform = 'translateX(0)';
+      notification.classList.remove('opacity-0');
+      notification.classList.add('opacity-100');
     }, 10);
 
     setTimeout(() => {
-      notification.style.transform = 'translateX(100%)';
+      notification.classList.remove('opacity-100');
+      notification.classList.add('opacity-0');
       setTimeout(() => {
         notification.remove();
       }, 300);
@@ -1769,7 +1771,7 @@ function App() {
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-      showNotification('Map exported as PNG!', 'success');
+      showNotification('Exported as image!', 'success');
     } else {
       showNotification('Error exporting map. Please try again.', 'error');
     }
@@ -1954,7 +1956,7 @@ function App() {
             navigator.share({
               files: [file],
               title: 'My Travel Summary',
-              text: `Track your own travels on Travel Tracker: https://travel-tracker.org`,
+              text: `Track your own travels on Travel Tracker: travel-tracker.org`,
             }).then(() => resolve(true))
               .catch((err) => {
                 if (err.name !== 'AbortError') {
@@ -1988,7 +1990,22 @@ function App() {
   }, [allActiveLocations, user]);
 
   // Handle Save Options
-  type SaveOption = 'image' | 'all-images' | 'csv' | 'share' | 'pdf';
+  type SaveOption = 'image' | 'all-images' | 'csv' | 'share' | 'pdf' | 'share-image';
+
+  // Helper to convert data URL to File
+  const dataURLtoFile = (dataurl: string, filename: string) => {
+    const arr = dataurl.split(',');
+    const match = arr[0].match(/:(.*?);/);
+    if (!match) return null;
+    const mime = match[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
 
   const handleSaveOption = useCallback(async (option: SaveOption) => {
     setIsSaveDropdownOpen(false);
@@ -2001,7 +2018,7 @@ function App() {
       const scopes: Scope[] = ['world', 'usa', 'usaParks', 'europe', 'china', 'india'];
       const initialScope = currentScope;
 
-      showNotification('Starting batch export... Please do not interact with the map.', 'success');
+      showNotification('Starting images export...', 'success');
 
       const zip = new JSZip();
 
@@ -2048,10 +2065,10 @@ function App() {
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
 
-        showNotification('Batch export completed! ZIP file downloaded.', 'success');
+        showNotification('Images export completed! ZIP file downloaded.', 'success');
       } catch (err) {
         console.error("Error generating ZIP:", err);
-        showNotification('Error generating ZIP file.', 'error');
+        showNotification('Error generating images ZIP file.', 'error');
       }
 
     } else if (option === 'csv') {
@@ -2102,12 +2119,12 @@ function App() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      showNotification('Locations exported as 6-column CSV!', 'success');
+      showNotification('Exported as CSV!', 'success');
 
     } else if (option === 'pdf') {
       const success = await generateSummaryPDF();
       if (success) {
-        showNotification('Summary PDF ready!', 'success');
+        showNotification('Shareable PDF ready!', 'success');
       } else {
         showNotification('Error generating PDF.', 'error');
       }
@@ -2121,22 +2138,65 @@ function App() {
       });
 
       const name = user?.username || 'Traveler';
-      const shareText = `Check out ${name}'s travels! I've visited: ${breakdownText}\n\nTrack your own travels on Travel Tracker: https://travel-tracker.org`;
+      const webUrl = 'travel-tracker.org';
+      const shareBody = `Check out ${name}'s travels! I've visited: ${breakdownText}`;
+      const fullShareText = `${shareBody}\n\nTrack your own travels on Travel Tracker: ${webUrl}`;
+
       const shareData = {
-        title: `Travel Summary.\n`,
-        text: shareText,
+        title: 'Travel Summary\n',
+        text: fullShareText,
       };
 
       if (navigator.share) {
         navigator.share(shareData).catch((err) => {
+          console.error("Share failed (text):", err);
+          // Fallback to clipboard if share text failed (e.g. browser support issues)
           if (err.name !== 'AbortError') {
-            navigator.clipboard.writeText(shareText);
+            navigator.clipboard.writeText(fullShareText);
             showNotification('Summary copied to clipboard!', 'success');
           }
         });
       } else {
-        navigator.clipboard.writeText(shareText);
+        navigator.clipboard.writeText(fullShareText);
         showNotification('Travel summary copied to clipboard!', 'success');
+      }
+    } else if (option === 'share-image') {
+      // Share map as PNG image
+      showNotification('Generating image for sharing...', 'success');
+      const result = await generateMapImage();
+
+      if (result) {
+        const file = dataURLtoFile(result.dataUrl, result.filename);
+        if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({
+            files: [file],
+            title: 'Travel Summary',
+            text: `Check out ${name}'s travel map from Travel Tracker (travel-tracker.org)!`,
+          }).catch((err) => {
+            if (err.name !== 'AbortError') {
+              console.error('Share image failed:', err);
+              // Fallback to download
+              const downloadLink = document.createElement('a');
+              downloadLink.href = result.dataUrl;
+              downloadLink.download = result.filename;
+              document.body.appendChild(downloadLink);
+              downloadLink.click();
+              document.body.removeChild(downloadLink);
+              showNotification('Could not share directly. Image downloaded instead.', 'success');
+            }
+          });
+        } else {
+          // Fallback to download
+          const downloadLink = document.createElement('a');
+          downloadLink.href = result.dataUrl;
+          downloadLink.download = result.filename;
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          showNotification('Browser does not support image sharing. Image downloaded.', 'success');
+        }
+      } else {
+        showNotification('Failed to generate image.', 'error');
       }
     }
   }, [saveMapAsPNG, generateSummaryPDF, allActiveLocations, showNotification]);
@@ -3567,6 +3627,15 @@ function App() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
                         </svg>
                         Share Text
+                      </button>
+                      <button
+                        onClick={() => handleSaveOption('share-image')}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Share Image
                       </button>
                       <button
                         onClick={() => handleSaveOption('pdf')}
