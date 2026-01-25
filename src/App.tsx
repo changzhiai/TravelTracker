@@ -2167,11 +2167,12 @@ function App() {
 
       if (result) {
         const file = dataURLtoFile(result.dataUrl, result.filename);
+        const name = user?.username || 'Traveler';
         if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({
+            title: 'Travel Summary\n',
             files: [file],
-            title: 'Travel Summary',
-            text: `Check out ${name}'s travel map from Travel Tracker (travel-tracker.org)!`,
+            text: `\nCheck out ${name}'s travel map from Travel Tracker (travel-tracker.org)!`,
           }).catch((err) => {
             if (err.name !== 'AbortError') {
               console.error('Share image failed:', err);
