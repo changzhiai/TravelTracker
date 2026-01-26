@@ -25,7 +25,7 @@ export const authService = {
         }
     },
 
-    async login(username: string, password: string): Promise<User | null> {
+    async login(username: string, password: string): Promise<{ user: User | null; error?: string }> {
         try {
             const response = await fetch(`${API_URL}/login`, {
                 method: 'POST',
@@ -38,13 +38,20 @@ export const authService = {
                 const user = data.user;
                 if (user && user.username) {
                     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-                    return user;
+                    return { user };
                 }
             }
-            return null;
+
+            // Try to get error message from server
+            try {
+                const errorData = await response.json();
+                return { user: null, error: errorData.error || 'Invalid credentials' };
+            } catch (e) {
+                return { user: null, error: `Server error: ${response.status} ${response.statusText}` };
+            }
         } catch (error) {
             console.error('Login error:', error);
-            return null;
+            return { user: null, error: error instanceof Error ? error.message : 'Network error - check your connection' };
         }
     },
 

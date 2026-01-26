@@ -31,12 +31,12 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                 setError('Username or Email and password are required.');
                 return;
             }
-            const user = await authService.login(username.trim(), password.trim());
-            if (user) {
-                onLoginSuccess(user.username);
+            const result = await authService.login(username.trim(), password.trim());
+            if (result.user) {
+                onLoginSuccess(result.user.username);
                 resetForm();
             } else {
-                setError('Invalid username or password.');
+                setError(result.error || 'Invalid username or password.');
             }
         } else if (mode === 'register') {
             if (!username.trim() || !password.trim()) {

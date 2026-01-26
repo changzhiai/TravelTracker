@@ -3123,7 +3123,7 @@ function App() {
 
   return (
     <div
-      className="flex flex-col py-2 md:py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
+      className="flex flex-col pt-safe pb-2 md:py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
       style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
@@ -3690,12 +3690,12 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl p-4 sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 pb-4 pt-[max(1rem,calc(env(safe-area-inset-top)+1rem))] sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
           }`}>
           {/* Close button for mobile */}
           <button
             onClick={() => setShowListOnMobile(false)}
-            className="lg:hidden absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10"
+            className="lg:hidden absolute top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))] right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10"
             title="Close list"
           >
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
