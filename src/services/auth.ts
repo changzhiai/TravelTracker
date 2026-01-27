@@ -2,6 +2,7 @@
 // Auth service using Background Database (Express + SQLite)
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
+console.log('Auth Service initialized with API_URL:', API_URL);
 const CURRENT_USER_KEY = 'travel_tracker_current_user';
 
 export interface User {

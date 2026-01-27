@@ -3,7 +3,14 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.traveltracker.app',
   appName: 'Travel Tracker',
-  webDir: 'dist'
+  webDir: 'dist',
+  plugins: {
+    StatusBar: {
+      overlaysWebView: false,
+      style: 'light',
+      backgroundColor: '#ffffff',
+    },
+  },
 };
 
 export default config;

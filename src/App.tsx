@@ -11,6 +11,8 @@ import { feature } from 'topojson-client';
 import { union } from '@turf/turf';
 import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import logoImage from '/logo_tt.png';
 import nationalParksGeoJsonUrl from '../public/data/geojson/national-parks.geojson?url';
 import worldGeoJsonUrl from '../public/data/geojson/world.geojson?url';
@@ -329,6 +331,27 @@ function App() {
       window.removeEventListener('orientationchange', updateAppHeight);
     };
   }, []);
+
+  // Configure Status Bar and Platform adjustments
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const configureStatusBar = async () => {
+        try {
+          // Explicitly set the status bar to NOT overlay the webview
+          await StatusBar.setOverlaysWebView({ overlay: false });
+          // Set style to light (dark icons)
+          await StatusBar.setStyle({ style: Style.Light });
+          // Set background color to white
+          await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+        } catch (e) {
+          console.warn('StatusBar configuration failed:', e);
+        }
+      };
+      configureStatusBar();
+    }
+  }, []);
+
+  const isAndroid = Capacitor.getPlatform() === 'android';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -3123,7 +3146,7 @@ function App() {
 
   return (
     <div
-      className="flex flex-col pt-safe pb-2 md:py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4"
+      className={`flex flex-col pb-2 md:py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4 ${isAndroid ? 'pt-8' : 'pt-safe'}`}
       style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
@@ -3690,12 +3713,12 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 pb-4 pt-[max(1rem,calc(env(safe-area-inset-top)+1rem))] sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 pb-4 ${isAndroid ? 'pt-16' : 'pt-[max(1rem,calc(env(safe-area-inset-top)+1rem))]'} sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
           }`}>
           {/* Close button for mobile */}
           <button
             onClick={() => setShowListOnMobile(false)}
-            className="lg:hidden absolute top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))] right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10"
+            className={`lg:hidden absolute right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10 ${isAndroid ? 'top-6' : 'top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))]'}`}
             title="Close list"
           >
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
