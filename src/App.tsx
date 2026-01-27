@@ -88,11 +88,15 @@ const EUROPE_TO_WORLD_MAPPING: Record<string, string> = {
 };
 
 import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { DeleteAccountInfo } from './components/DeleteAccountInfo';
 
 function App() {
   // Simple routing
   if (window.location.pathname === '/privacy') {
     return <PrivacyPolicy />;
+  }
+  if (window.location.pathname === '/delete-account') {
+    return <DeleteAccountInfo />;
   }
 
   // State management
