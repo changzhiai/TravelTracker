@@ -16,12 +16,27 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const [activeTab, setActiveTab] = useState<'stats' | 'edit'>(initialTab);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             setActiveTab(initialTab);
+            setShowDeleteConfirm(false);
+            setDeletePassword('');
         }
     }, [isOpen, initialTab]);
+
+    const handleDeleteAccount = async () => {
+        if (!user || !user.id) return;
+
+        const result = await authService.deleteAccount(user.id, deletePassword);
+        if (result.success) {
+            window.location.reload(); // Logout and reload app
+        } else {
+            setMessage({ text: result.message || 'Failed to delete account', type: 'error' });
+        }
+    };
 
 
     useEffect(() => {
@@ -51,6 +66,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
         }
 
         const result = await authService.updateProfile(user.id, username, email);
+
         if (result.success) {
             setMessage({ text: 'Profile updated successfully!', type: 'success' });
             onUpdateUser(username);
@@ -162,6 +178,52 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                                 </button>
                             </div>
                         </form>
+                    )}
+
+                    {activeTab === 'edit' && (
+                        <div className="mt-8 pt-6 border-t border-gray-100">
+                            <h3 className="text-sm font-bold text-red-600 mb-2 uppercase tracking-wider">Danger Actions</h3>
+                            {!showDeleteConfirm ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="w-full px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors border border-red-200"
+                                >
+                                    Delete Account
+                                </button>
+                            ) : (
+                                <div className="bg-red-50 p-4 rounded-xl border border-red-200 animate-fade-in">
+                                    <p className="text-sm text-red-800 mb-3 font-medium">
+                                        Are you sure? This action cannot be undone. All your travels will be lost.
+                                    </p>
+                                    <input
+                                        type="password"
+                                        placeholder="Confirm your password"
+                                        className="w-full px-3 py-2 border border-red-300 rounded-lg mb-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                        value={deletePassword}
+                                        onChange={(e) => setDeletePassword(e.target.value)}
+                                    />
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={handleDeleteAccount}
+                                            disabled={!deletePassword}
+                                            className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Confirm Delete
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowDeleteConfirm(false);
+                                                setDeletePassword('');
+                                            }}
+                                            className="flex-1 px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>

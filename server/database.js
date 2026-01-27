@@ -185,6 +185,29 @@ const migrateData = () => {
     // db.all("SELECT * FROM visits", [], (err, rows) => { ... });
 };
 
+const deleteUser = (userId, callback) => {
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+
+        // Delete visits from all scope tables
+        Object.values(SCOPE_TABLES).forEach(tableName => {
+            db.run(`DELETE FROM ${tableName} WHERE user_id = ?`, [userId]);
+        });
+
+        // Delete user
+        db.run("DELETE FROM users WHERE id = ?", [userId], function (err) {
+            if (err) {
+                db.run("ROLLBACK");
+                callback(err);
+                return;
+            }
+            db.run("COMMIT", (commitErr) => {
+                callback(commitErr);
+            });
+        });
+    });
+};
+
 module.exports = {
     db,
     createUser,
@@ -197,5 +220,6 @@ module.exports = {
     updateUserProfile,
     createVerificationCode,
     getVerificationCode,
-    deleteVerificationCode
+    deleteVerificationCode,
+    deleteUser
 };

@@ -155,6 +155,25 @@ export const authService = {
         }
     },
 
+    async deleteAccount(id: number, password: string): Promise<{ success: boolean; message?: string }> {
+        try {
+            const response = await fetch(`${API_URL}/user/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                this.logout();
+                return { success: true };
+            }
+            return { success: false, message: data.error || 'Failed to delete account' };
+        } catch (error) {
+            return { success: false, message: 'Network error' };
+        }
+    },
+
     logout() {
         localStorage.removeItem(CURRENT_USER_KEY);
     },
