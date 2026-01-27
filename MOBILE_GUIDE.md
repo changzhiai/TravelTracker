@@ -59,3 +59,31 @@ When you make changes to your React code:
 3.  Re-run from Xcode/Android Studio.
 
 *Note: You can also use "Live Reload" for development. See [Capacitor Live Reload](https://capacitorjs.com/docs/guides/live-reload) documentation.*
+
+## Deploy to App Store / Play Store
+
+### Android (Generating a Signed APK/Bundle)
+
+1.  **Open Android Studio**:
+    ```bash
+    npx cap open android
+    ```
+2.  **Generate Signed Bundle**:
+    *   Go to **Build** > **Generate Signed Bundle / APK**.
+    *   Choose **Android App Bundle** (for Play Store) or **APK** (for manual install/testing).
+    *   Click **Next**.
+3.  **Create Keystore** (if you don't have one):
+    *   Click **Create new...** under "Key store path".
+    *   Choose a safe location and set a password.
+    *   Fill in the "Key" alias, password, and validity (e.g., 25 years).
+    *   Fill in at least one certificate field (e.g., First and Last Name).
+    *   Click **OK**.
+4.  **Finish Build**:
+    *   Select your new key alias.
+    *   Click **Next**.
+    *   Select **release**.
+    *   Click **Create**.
+5.  **Locate File**:
+    *   Once done, a popup will appear. Click **locate** to find your `.aab` or `.apk` file.
+    *   Upload the `.aab` to the Google Play Console for release.
+

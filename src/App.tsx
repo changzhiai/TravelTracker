@@ -3713,12 +3713,12 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className={`fixed lg:static top-0 bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 pb-4 ${isAndroid ? 'pt-16' : 'pt-[max(1rem,calc(env(safe-area-inset-top)+1rem))]'} sm:p-6 flex flex-col border border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        <div className={`fixed lg:static ${isAndroid ? 'top-8 rounded-tl-2xl border-t' : 'top-0'} bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 pb-4 ${isAndroid ? 'pt-6' : 'pt-[max(1rem,calc(env(safe-area-inset-top)+1rem))]'} sm:p-6 flex flex-col border-l border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
           }`}>
           {/* Close button for mobile */}
           <button
             onClick={() => setShowListOnMobile(false)}
-            className={`lg:hidden absolute right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10 ${isAndroid ? 'top-6' : 'top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))]'}`}
+            className={`lg:hidden absolute right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10 ${isAndroid ? 'top-5' : 'top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))]'}`}
             title="Close list"
           >
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
