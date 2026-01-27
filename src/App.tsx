@@ -87,7 +87,14 @@ const EUROPE_TO_WORLD_MAPPING: Record<string, string> = {
   "United Kingdom": "England"
 };
 
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+
 function App() {
+  // Simple routing
+  if (window.location.pathname === '/privacy') {
+    return <PrivacyPolicy />;
+  }
+
   // State management
   const [currentScope, setCurrentScope] = useState<Scope>('world');
   const [allActiveLocations, setAllActiveLocations] = useState<Record<Scope, Set<string>>>({
