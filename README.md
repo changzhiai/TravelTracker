@@ -19,22 +19,22 @@ Or you can check the dynamic version on: https://travel-tracker.org/
 <div align="center">
 
 #### 🌍 World Map
-![World Map](./public/World.png)
+![World Map](docs/figures/World.png)
 
 #### 🇺🇸 USA Map
-![USA Map](./public/USA.png)
+![USA Map](docs/figures/USA.png)
 
 #### 🇪🇺 Europe Map
-![Europe Map](./public/Europe.png)
+![Europe Map](docs/figures/Europe.png)
 
 #### 🇨🇳 China Map
-![China Map](./public/China.png)
+![China Map](docs/figures/China.png)
 
 #### 🇮🇳 India Map
-![India Map](./public/India.png)
+![India Map](docs/figures/India.png)
 
 #### 🏞️ US National Parks Map
-![US National Parks Map](./public/US_NPs.png)
+![US National Parks Map](docs/figures/US_NPs.png)
 
 </div>
 
