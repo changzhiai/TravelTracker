@@ -14,12 +14,7 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import logoImage from './assets/logo_tt.png';
-import nationalParksGeoJsonUrl from '../public/data/geojson/national-parks.geojson?url';
-import worldGeoJsonUrl from '../public/data/geojson/world.geojson?url';
-import usaStatesUrl from '../public/data/geojson/usa-states.json?url';
-import chinaProvincesUrl from '../public/data/geojson/china-provinces.json?url';
-import europeTopoJsonUrl from '../public/data/geojson/europe.topojson?url';
-import indiaStatesUrl from '../public/data/geojson/india-states.json?url';
+
 import './App.css';
 
 // Type definitions
@@ -51,12 +46,12 @@ interface TopoData extends Topology {
 // Constants
 // Using Natural Earth 110m data which includes 182 countries (standard for most world maps)
 // Note: Different datasets have different counts. UN recognizes 195 countries total.
-const WORLD_GEOJSON_URL = worldGeoJsonUrl;
-const USA_STATES_URL = usaStatesUrl;
-const NATIONAL_PARKS_GEOJSON_URL = nationalParksGeoJsonUrl;
-const CHINA_PROVINCES_URL = chinaProvincesUrl;
-const EUROPE_TOPJSON_URL = europeTopoJsonUrl;
-const INDIA_STATES_URL = indiaStatesUrl;
+const WORLD_GEOJSON_URL = '/data/geojson/world.geojson';
+const USA_STATES_URL = '/data/geojson/usa-states.json';
+const NATIONAL_PARKS_GEOJSON_URL = '/data/geojson/national-parks.geojson';
+const CHINA_PROVINCES_URL = '/data/geojson/china-provinces.json';
+const EUROPE_TOPJSON_URL = '/data/geojson/europe.topojson';
+const INDIA_STATES_URL = '/data/geojson/india-states.json';
 
 const normalizeLocationName = (name: string) =>
   name.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
