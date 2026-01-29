@@ -13,7 +13,7 @@ import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import logoImage from '/logo_tt.png';
+import logoImage from './assets/logo_tt.png';
 import nationalParksGeoJsonUrl from '../public/data/geojson/national-parks.geojson?url';
 import worldGeoJsonUrl from '../public/data/geojson/world.geojson?url';
 import usaStatesUrl from '../public/data/geojson/usa-states.json?url';

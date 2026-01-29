@@ -57,13 +57,54 @@ Or you can check the dynamic version on: https://travel-tracker.org/
 - 📱 **Responsive Design** - Works beautifully on desktop and mobile
 - 🎨 **Modern UI** - Glassmorphism design with gradient effects
 
-## Tech Stack
+## � Languages
 
-- React 19
-- TypeScript
-- D3.js
-- Tailwind CSS
-- Vite
+### 1. Frontend (Web App)
+- **TypeScript** (`.tsx`, `.ts`): This is the main language we are writing in. It's just "JavaScript with Superpowers" (types) that makes it safer and easier to spot bugs.
+- **HTML & CSS**: For structure and styling (via Tailwind).
+
+### 2. Backend (Server)
+- **JavaScript** (`.js`): Our Node.js server (`server/server.js`) and database logic are written in standard JavaScript.
+
+### 3. Mobile (Native Wrappers)
+*Note: We don't usually edit these files directly, but they exist in the project.*
+- **iOS**: Swift and Objective-C (inside the `ios/` folder).
+- **Android**: Java and Kotlin (inside the `android/` folder).
+
+### 4. Configuration
+- **Groovy**: Used for Android build scripts (`build.gradle`).
+
+## �🛠️ Tech Stack
+
+### Frontend (Web)
+- **Framework**: [React 19](https://react.dev/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Maps & Visualization**:
+  - [D3.js](https://d3js.org/) (Data-Driven Documents)
+  - [TopJSON Client](https://github.com/topojson/topojson-client)
+  - [Turf.js](https://turfjs.org/) (Geospatial analysis)
+- **Export**: [jsPDF](https://github.com/parallax/jsPDF) & [html2canvas](https://html2canvas.hertzen.com/)
+
+### Backend (API & Database)
+- **Runtime**: [Node.js](https://nodejs.org/)
+- **Server Framework**: [Express.js](https://expressjs.com/)
+- **Database**: [SQLite3](https://www.sqlite.org/) (Lightweight, file-based relational DB)
+- **Authentication**: `bcryptjs` (Password hashing)
+- **Email**: [Nodemailer](https://nodemailer.com/) (Password reset & notifications)
+
+### Mobile (iOS & Android)
+- **Framework**: [Capacitor](https://capacitorjs.com/) (Cross-platform native runtime)
+- **Plugins**:
+  - `@capacitor/status-bar`: Native status bar control
+  - `@capacitor/keyboard`: Native keyboard handling
+  - `@capacitor/splash-screen`: Launch screen management
+
+### Tools & DevOps
+- **Linting**: ESLint
+- **Version Control**: Git & GitHub
+- **Deployment**: GitHub Pages (Frontend), AWS EC2 (Backend)
 
 ## Getting Started
 
