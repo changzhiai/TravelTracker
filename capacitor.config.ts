@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.changzhiai.traveltracker.app',
+  appId: 'com.traveltracker.app',
   appName: 'Travel Tracker',
   webDir: 'dist',
   plugins: {
