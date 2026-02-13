@@ -86,6 +86,35 @@ export const authService = {
         }
     },
 
+    async appleLogin(token: string, user?: { name?: { firstName?: string, lastName?: string }, email?: string }): Promise<{ user: User | null; error?: string }> {
+        try {
+            const response = await fetch(`${API_URL}/apple-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, user })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const user = data.user;
+                if (user && user.username) {
+                    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+                    return { user };
+                }
+            }
+
+            try {
+                const errorData = await response.json();
+                return { user: null, error: errorData.error || 'Apple login failed' };
+            } catch (e) {
+                return { user: null, error: 'Failed to verify Apple account' };
+            }
+        } catch (error) {
+            console.error('Apple login error:', error);
+            return { user: null, error: 'Network error' };
+        }
+    },
+
     async register(username: string, password: string, email?: string): Promise<boolean> {
         try {
             const response = await fetch(`${API_URL}/register`, {

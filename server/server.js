@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const db = require('./database.js');
 const { OAuth2Client } = require('google-auth-library');
+const appleSignin = require('apple-signin-auth');
 
 const nodemailer = require('nodemailer');
 
@@ -202,6 +203,67 @@ app.post('/api/google-login', async (req, res) => {
     } catch (error) {
         console.error('Google verification error:', error);
         res.status(401).json({ error: 'Invalid Google token' });
+    }
+});
+
+// Apple Login
+app.post('/api/apple-login', async (req, res) => {
+    const { token, user: appleUser } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token is required' });
+
+    try {
+        const { sub: appleId, email } = await appleSignin.verifyIdToken(token, {
+            // Verify the audience (Service ID)
+            audience: process.env.APPLE_CLIENT_ID,
+            ignoreExpiration: false,
+        });
+
+        // Use email to find/create user
+        // If email is not in token (can happen if user hides it, but 'sub' is always there), 
+        // we might need to rely on 'sub'. But for now we'll use email as primary.
+        db.getUserByEmail(email, (err, user) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            if (user) {
+                // User exists, return user info
+                return res.json({
+                    message: 'Login successful',
+                    user: { id: user.id, username: user.username, email: user.email, hasPassword: false }
+                });
+            } else {
+                // User doesn't exist, create a new one
+                // Use the name from appleUser if provided (first login), otherwise use email prefix
+                let firstName = appleUser?.name?.firstName || '';
+                let lastName = appleUser?.name?.lastName || '';
+                let fullName = [firstName, lastName].filter(Boolean).join(' ');
+                let baseUsername = fullName || email.split('@')[0];
+
+                db.createUser(baseUsername, null, email, (err, userId) => {
+                    if (err) {
+                        if (err.message.includes('UNIQUE constraint failed')) {
+                            baseUsername = `${baseUsername}_${Math.floor(Math.random() * 1000)}`;
+                            db.createUser(baseUsername, null, email, (err, userId) => {
+                                if (err) return res.status(500).json({ error: err.message });
+                                return res.json({
+                                    message: 'Login successful',
+                                    user: { id: userId, username: baseUsername, email: email, hasPassword: false }
+                                });
+                            });
+                        } else {
+                            return res.status(500).json({ error: err.message });
+                        }
+                    } else {
+                        res.json({
+                            message: 'Login successful',
+                            user: { id: userId, username: baseUsername, email: email, hasPassword: false }
+                        });
+                    }
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Apple verification error:', error);
+        res.status(401).json({ error: 'Invalid Apple token' });
     }
 });
 
