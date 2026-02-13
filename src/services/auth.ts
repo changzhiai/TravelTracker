@@ -9,6 +9,7 @@ export interface User {
     id?: number;
     username: string;
     email?: string;
+    hasPassword?: boolean;
 }
 
 export const authService = {
@@ -53,6 +54,35 @@ export const authService = {
         } catch (error) {
             console.error('Login error:', error);
             return { user: null, error: error instanceof Error ? error.message : 'Network error - check your connection' };
+        }
+    },
+
+    async googleLogin(token: string): Promise<{ user: User | null; error?: string }> {
+        try {
+            const response = await fetch(`${API_URL}/google-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const user = data.user;
+                if (user && user.username) {
+                    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+                    return { user };
+                }
+            }
+
+            try {
+                const errorData = await response.json();
+                return { user: null, error: errorData.error || 'Google login failed' };
+            } catch (e) {
+                return { user: null, error: 'Failed to verify Google account' };
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+            return { user: null, error: 'Network error' };
         }
     },
 

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { authService } from '../services/auth';
+import { GoogleLogin } from '@react-oauth/google';
 
 interface SignInModalProps {
     isOpen: boolean;
@@ -120,7 +121,6 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-
                     {/* Username Field - Only for Sign In and Register */}
                     {mode !== 'reset' && (
                         <div>
@@ -219,7 +219,42 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                     </div>
                 </form>
 
-                <div className="mt-4 text-center">
+                {mode === 'signin' && (
+                    <div className="mt-6">
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-200"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center">
+                            <GoogleLogin
+                                onSuccess={async (credentialResponse) => {
+                                    if (credentialResponse.credential) {
+                                        const result = await authService.googleLogin(credentialResponse.credential);
+                                        if (result.user) {
+                                            onLoginSuccess(result.user.username);
+                                            resetForm();
+                                        } else {
+                                            setError(result.error || 'Google login failed');
+                                        }
+                                    }
+                                }}
+                                onError={() => {
+                                    setError('Google Login Failed');
+                                }}
+                                width="340"
+                                theme="outline"
+                                shape="pill"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-6 text-center">
                     <button
                         type="button"
                         onClick={toggleMode}

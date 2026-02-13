@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const db = require('./database.js');
+const { OAuth2Client } = require('google-auth-library');
 
 const nodemailer = require('nodemailer');
 
@@ -18,6 +19,8 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Email Transporter
 // Supports Gmail, Outlook (Hotmail), etc. via standard services or SMTP
@@ -144,16 +147,73 @@ app.post('/api/reset-password', (req, res) => {
     });
 });
 
+// Google Login
+app.post('/api/google-login', async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token is required' });
+
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+        const { sub, email, name, picture } = payload;
+
+        // Use email as a way to find/create user
+        // If user exists by email, log them in.
+        // If not, create a new user.
+        db.getUserByEmail(email, (err, user) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            if (user) {
+                // User exists, return user info
+                return res.json({
+                    message: 'Login successful',
+                    user: { id: user.id, username: user.username, email: user.email, hasPassword: false }
+                });
+            } else {
+                // Use the name from Google as username (might need to handle duplicates)
+                // For simplicity, we'll try to use the name, and fallback to email prefix if it exists
+                let baseUsername = name || email.split('@')[0];
+                db.createUser(baseUsername, null, email, (err, userId) => {
+                    if (err) {
+                        if (err.message.includes('UNIQUE constraint failed')) {
+                            baseUsername = `${baseUsername}_${Math.floor(Math.random() * 1000)}`;
+                            db.createUser(baseUsername, null, email, (err, userId) => {
+                                if (err) return res.status(500).json({ error: err.message });
+                                return res.json({
+                                    message: 'Login successful',
+                                    user: { id: userId, username: baseUsername, email: email, hasPassword: false }
+                                });
+                            });
+                        } else {
+                            return res.status(500).json({ error: err.message });
+                        }
+                    } else {
+                        res.json({
+                            message: 'Login successful',
+                            user: { id: userId, username: baseUsername, email: email, hasPassword: false }
+                        });
+                    }
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Google verification error:', error);
+        res.status(401).json({ error: 'Invalid Google token' });
+    }
+});
+
 // Login
 app.post('/api/login', (req, res) => {
-    const { username, password } = req.body; // Frontend still sends 'username' field
+    const { username, password } = req.body;
 
     db.verifyUser(username, password, (err, isValid, user) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!isValid) return res.status(401).json({ error: 'Invalid credentials' });
 
-        // Return user info (could return a token here in a real app)
-        res.json({ message: 'Login successful', user: { id: user.id, username: user.username, email: user.email } });
+        res.json({ message: 'Login successful', user: { id: user.id, username: user.username, email: user.email, hasPassword: true } });
     });
 });
 
@@ -164,7 +224,7 @@ app.get('/api/user/:username', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(404).json({ error: 'User not found' });
         // Don't return password hash
-        res.json({ id: user.id, username: user.username, email: user.email });
+        res.json({ id: user.id, username: user.username, email: user.email, hasPassword: !!user.password });
     });
 });
 
@@ -221,35 +281,28 @@ app.post('/api/visits', (req, res) => {
 // Delete Account
 app.delete('/api/user/:id', (req, res) => {
     const { id } = req.params;
-    const { password } = req.body; // Optional: Verify password for security
+    const { password } = req.body;
 
-    // In a real app, you MUST verify the session/token or password here.
-    // Since we are using simple auth, checking the password is a good idea.
-    if (!password) {
-        return res.status(400).json({ error: 'Password is required to delete account' });
-    }
-
-    // First verify user
-    // We need to fetch the user to get the hashed password to verify against
-    // But verifyUser function relies on username/email.
-    // Let's implement a direct check or just reuse what we have.
-    // Actually, let's skip the password check for simplicity OR do it right?
-    // User requested "add a way to delete account". Security is good.
-    // But `deleteUser` uses ID. We can't verify password efficiently without username.
-
-    // Let's assume the frontend sends username too OR we fetch user by ID first.
-    // For simplicity given the scope, I will require just the ID, BUT best practice is auth.
-    // Let's rely on the frontend sending the password to a specific 'verify' logic if needed.
-    // Wait, the `verifyUser` takes username.
-    // Let's keep it simple: Just delete by ID. The user is logged in locally.
-
-    // UPDATE: To be safe, let's ask for the password to confirm.
-    // But `verifyUser` needs username. We can fetch user by ID to get username?
-    // Let's just delete by ID for now as requested.
-
-    db.deleteUser(id, (err) => {
+    db.getUserById(id, (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Account deleted successfully' });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // If user has a password in DB, we must verify it
+        if (user.password) {
+            const bcrypt = require('bcryptjs');
+            if (!password) {
+                return res.status(400).json({ error: 'Password is required to delete account' });
+            }
+            if (!bcrypt.compareSync(password, user.password)) {
+                return res.status(401).json({ error: 'Incorrect password' });
+            }
+        }
+
+        // If no password in DB (Google user) or password verified successfully
+        db.deleteUser(id, (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Account deleted successfully' });
+        });
     });
 });
 

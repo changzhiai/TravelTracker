@@ -90,7 +90,7 @@ const deleteVerificationCode = (email, callback) => {
 };
 
 const createUser = (username, password, email, callback) => {
-    const hash = bcrypt.hashSync(password, 10);
+    const hash = password ? bcrypt.hashSync(password, 10) : null;
     const stmt = db.prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)");
     stmt.run(username, hash, email, function (err) {
         callback(err, this ? this.lastID : null);
@@ -106,6 +106,12 @@ const getUserByUsername = (username, callback) => {
 
 const getUserByEmail = (email, callback) => {
     db.get("SELECT * FROM users WHERE email = ?", [email], (err, row) => {
+        callback(err, row);
+    });
+};
+
+const getUserById = (id, callback) => {
+    db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
         callback(err, row);
     });
 };
@@ -213,6 +219,7 @@ module.exports = {
     createUser,
     getUserByUsername,
     getUserByEmail,
+    getUserById,
     verifyUser,
     getUserVisits,
     saveUserVisits,

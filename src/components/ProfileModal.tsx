@@ -14,6 +14,7 @@ interface ProfileModalProps {
 export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocations, initialTab = 'stats', stats: passedStats }: ProfileModalProps) {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
+    const [hasPassword, setHasPassword] = useState<boolean | undefined>(user?.hasPassword);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const [activeTab, setActiveTab] = useState<'stats' | 'edit'>(initialTab);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -24,8 +25,9 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
             setActiveTab(initialTab);
             setShowDeleteConfirm(false);
             setDeletePassword('');
+            setHasPassword(user?.hasPassword);
         }
-    }, [isOpen, initialTab]);
+    }, [isOpen, initialTab, user]);
 
     const handleDeleteAccount = async () => {
         if (!user || !user.id) return;
@@ -45,10 +47,13 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
             setEmail(user.email || '');
             setMessage(null);
 
-            // Refresh profile data to get latest stats/email if needed
+            // Refresh profile data to get latest stats/email/hasPassword if needed
             authService.getProfile(user.username).then(updatedUser => {
                 if (updatedUser) {
                     setEmail(updatedUser.email || '');
+                    if (updatedUser.hasPassword !== undefined) {
+                        setHasPassword(updatedUser.hasPassword);
+                    }
                 }
             });
         }
@@ -196,17 +201,19 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                                     <p className="text-sm text-red-800 mb-3 font-medium">
                                         Are you sure? This action cannot be undone. All your travels will be lost.
                                     </p>
-                                    <input
-                                        type="password"
-                                        placeholder="Confirm your password"
-                                        className="w-full px-3 py-2 border border-red-300 rounded-lg mb-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                                        value={deletePassword}
-                                        onChange={(e) => setDeletePassword(e.target.value)}
-                                    />
+                                    {hasPassword !== false && (
+                                        <input
+                                            type="password"
+                                            placeholder="Confirm your password"
+                                            className="w-full px-3 py-2 border border-red-300 rounded-lg mb-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                            value={deletePassword}
+                                            onChange={(e) => setDeletePassword(e.target.value)}
+                                        />
+                                    )}
                                     <div className="flex space-x-2">
                                         <button
                                             onClick={handleDeleteAccount}
-                                            disabled={!deletePassword}
+                                            disabled={hasPassword !== false && !deletePassword}
                                             className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
                                             Confirm Delete

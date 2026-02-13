@@ -1066,13 +1066,13 @@ function App() {
 
           // Special adjustment for USA to center it in the mainland (avoiding Alaska/Hawaii pull)
           if (d.properties.name === 'USA' || d.properties.name === 'United States' || d.properties.name === 'United States of America') {
-            y += 40; // Shift down
-            x += 40;  // Shift slightly right
+            y += 10; // Shift down
+            x += 0;  // Shift slightly right
           }
 
           // Adjust Norway label downwards
           if (d.properties.name === 'Norway') {
-            y += 17;
+            y += 5;
           }
 
           return `translate(${x},${y})`;
