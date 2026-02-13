@@ -10,11 +10,12 @@
     "start": "cd server && node server.js",
     "server": "cd server && node server.js",
     "build": "tsc -b && vite build",
+    "build:mobile": "VITE_APP_TARGET=mobile vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist"
   },
-  "homepage": "https://changzhiai.github.io/TravelTracker",
+  "homepage": "https://travel-tracker.org",
   "dependencies": {
     "@capacitor/android": "^8.0.1",
     "@capacitor/app": "^8.0.0",
@@ -22,6 +23,7 @@
     "@capacitor/core": "^8.0.1",
     "@capacitor/ios": "^8.0.1",
     "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/screen-orientation": "^8.0.1",
     "@capacitor/status-bar": "^8.0.0",
     "@turf/turf": "^7.3.0",
     "d3": "^7.9.0",

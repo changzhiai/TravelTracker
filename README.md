@@ -99,6 +99,7 @@ Or you can check the dynamic version on: https://travel-tracker.org/
 - **Plugins**:
   - `@capacitor/status-bar`: Native status bar control
   - `@capacitor/keyboard`: Native keyboard handling
+  - `@capacitor/screen-orientation`: Screen orientation management
   - `@capacitor/splash-screen`: Launch screen management
 
 ### Tools & DevOps
@@ -130,6 +131,17 @@ npm run dev
 ```bash
 npm run build
 ```
+
+### Mobile Build (iOS/Android)
+
+To build the app for mobile devices (iOS/Android), use:
+
+```bash
+npm run build:mobile
+npx cap sync
+```
+
+See the [Mobile Guide](docs/MOBILE_GUIDE.md) for detailed instructions on running in Xcode and Android Studio.
 
 ## Deployment to GitHub Pages
 

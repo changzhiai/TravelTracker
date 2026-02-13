@@ -41,17 +41,19 @@ For the app to work properly on a device:
     ```
 3.  Rebuild and sync the app:
     ```bash
-    npm run build
+    npm run build:mobile
     npx cap sync
     ```
 
 ## Development Workflow
 
 When you make changes to your React code:
-1.  **Build** the web app:
+1.  **Build** the web app for mobile:
     ```bash
-    npm run build
+    npm run build:mobile
     ```
+    *Note: This script sets `VITE_APP_TARGET=mobile` to ensure assets use relative paths (`./`) which is required for Capacitor apps to load correctly on devices.*
+
 2.  **Sync** the changes to the native projects:
     ```bash
     npx cap sync
@@ -59,6 +61,23 @@ When you make changes to your React code:
 3.  Re-run from Xcode/Android Studio.
 
 *Note: You can also use "Live Reload" for development. See [Capacitor Live Reload](https://capacitorjs.com/docs/guides/live-reload) documentation.*
+
+## Mobile Features & Native Plugins
+
+This app uses several native Capacitor plugins to enhance the user experience on mobile devices:
+
+### Fullscreen Experience
+- **Native Fullscreen**: The app implements a custom fullscreen behavior on iOS and Android to avoid system overlay messages (e.g., "Press ESC to exit").
+- **Status Bar**: The system status bar is automatically hidden when entering fullscreen mode for a more immersive experience.
+- **Orientation**: 
+  - The app automatically detects screen rotation.
+  - If you rotate your device to portrait mode while in fullscreen, the app will automatically exit fullscreen mode to maintain usability.
+
+### plugins Used
+- `@capacitor/status-bar`: Controls the visibility of the system status bar.
+- `@capacitor/screen-orientation`: Handles screen orientation changes and locking (if needed).
+- `@capacitor/app`: Handles app state (background/foreground).
+
 
 ## Deploy to App Store / Play Store
 

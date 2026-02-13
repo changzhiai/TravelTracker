@@ -13,6 +13,7 @@ import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 import logoImage from './assets/logo_tt.png';
 
 import './App.css';
@@ -144,6 +145,11 @@ function App() {
   const lastTouchTimeRef = useRef(0);
   const listHoverPathRef = useRef<SVGPathElement | null>(null);
   const scopeDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Responsive state
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Computed values
   const currentFeatures =
@@ -1055,7 +1061,25 @@ function App() {
       enter.merge(selection)
         .attr("transform", d => {
           const centroid = pathRef.current!.centroid(d);
-          return `translate(${centroid[0]},${centroid[1]})`;
+          let x = centroid[0];
+          let y = centroid[1];
+
+          // Special adjustment for USA to center it in the mainland (avoiding Alaska/Hawaii pull)
+          if (d.properties.name === 'USA' || d.properties.name === 'United States' || d.properties.name === 'United States of America') {
+            y += 40; // Shift down
+            x += 40;  // Shift slightly right
+          }
+
+          // Adjust Norway label downwards
+          if (d.properties.name === 'Norway') {
+            y += 17;
+          }
+
+          return `translate(${x},${y})`;
+        })
+        .style("font-size", () => {
+          const transform = svgRef.current ? d3.zoomTransform(svgRef.current) : { k: 1 };
+          return `${10 / transform.k}px`;
         })
         .transition()
         .duration(300)
@@ -1222,16 +1246,30 @@ function App() {
       const viewBox = svg.viewBox.baseVal;
 
       // Position at most left, with padding only from bottom
-      const paddingY = 15;
+      // In fullscreen, move it further away from the corner to avoid overlap with UI or rounded screen corners
+      const isFullscreen = isFullscreenRef.current;
+      const paddingY = isFullscreen ? 30 : 15;
 
-      x = 0;
+      x = isFullscreen ? 30 : 15; // Add margin from left edge
       y = viewBox.height - paddingY;
     } else {
       // Find the feature by name and use centroid for mouse hover
       const feature = selectableFeatures.find(d => d.properties.name === locationName);
       if (!feature) return;
       const centroid = pathRef.current.centroid(feature);
-      [x, y] = centroid;
+      x = centroid[0];
+      y = centroid[1];
+
+      // Special adjustment for USA to center it in the mainland (avoiding Alaska/Hawaii pull)
+      if (locationName === 'USA' || locationName === 'United States' || locationName === 'United States of America') {
+        y += 40; // Shift down (matching renderLabels adjustment)
+        x += 40; // Shift slightly right
+      }
+
+      // Adjust Norway label downwards
+      if (locationName === 'Norway') {
+        y += 15;
+      }
     }
 
     hoverLabelGroupRef.current.selectAll(".hover-label, .hover-label-bg, .hover-label-shadow").remove();
@@ -1290,10 +1328,10 @@ function App() {
       tempText.remove();
 
       if (tempBbox) {
-        // Create background at x=0
+        // Create background
         const rect = hoverLabelGroupRef.current.insert("rect", ".hover-label")
           .attr("class", "hover-label-bg")
-          .attr("x", 0)
+          .attr("x", x - paddingX)
           .attr("y", textY - tempBbox.height / 2 - paddingY)
           .attr("width", tempBbox.width + paddingX * 2)
           .attr("height", tempBbox.height + paddingY * 2);
@@ -1301,7 +1339,7 @@ function App() {
         // Position text inside with padding on both sides
         const label = hoverLabelGroupRef.current.append("text")
           .attr("class", "hover-label")
-          .attr("x", paddingX)
+          .attr("x", x)
           .attr("y", textY)
           .attr("text-anchor", "start")
           .attr("font-size", "14px")
@@ -1331,7 +1369,7 @@ function App() {
         // Update background with actual text bbox and add styling
         const bbox = (label.node() as SVGTextElement)?.getBBox();
         if (bbox) {
-          rect.attr("x", 0)  // Ensure background is always at leftmost position
+          rect.attr("x", x - paddingX)  // Ensure background is correctly positioned
             .attr("width", bbox.width + paddingX * 2)
             .attr("height", bbox.height + paddingY * 2)
             .attr("y", bbox.y - paddingY)
@@ -2359,6 +2397,9 @@ function App() {
         }
         if (labelGroupRef.current) {
           labelGroupRef.current.attr("transform", event.transform);
+          // Scale labels to keep constant size on screen
+          labelGroupRef.current.selectAll(".map-label")
+            .style("font-size", `${10 / event.transform.k}px`);
         }
         // Don't transform hoverLabelGroup - keep labels fixed in screen space
         // if (hoverLabelGroupRef.current) {
@@ -2436,17 +2477,158 @@ function App() {
     };
   }, []); // Only run once on mount
 
+  // Handle orientation and mobile checks
+  useEffect(() => {
+    const checkResponsive = () => {
+      // Check orientation
+      const landscape = window.innerWidth > window.innerHeight;
+      setIsLandscape(landscape);
+
+      // Check if mobile (touch)
+      const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsMobile(mobile);
+    };
+
+    const handleFullScreenChange = () => {
+      // If we exited native fullscreen, sync the state
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+      } else {
+        setIsFullscreen(true);
+      }
+    };
+
+    checkResponsive();
+    window.addEventListener('resize', checkResponsive);
+    window.addEventListener('orientationchange', checkResponsive);
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+
+    return () => {
+      window.removeEventListener('resize', checkResponsive);
+      window.removeEventListener('orientationchange', checkResponsive);
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, []);
+
+  // Reset view when switching orientation (landscape or portrait)
+  useEffect(() => {
+    // Automatically exit fullscreen if rotated to portrait
+    if (isFullscreen && !isLandscape) {
+      if (Capacitor.isNativePlatform() || isMobile) {
+        try {
+          if (Capacitor.isNativePlatform()) {
+            StatusBar.show().catch((e) => console.warn('StatusBar show failed:', e));
+            ScreenOrientation.unlock().catch(() => { });
+          }
+        } catch (e) {
+          console.warn('StatusBar plugin error:', e);
+        }
+        setIsFullscreen(false);
+      } else if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => { });
+        setIsFullscreen(false);
+      } else {
+        setIsFullscreen(false);
+      }
+    }
+
+    // Small delay to allow layout to settle after orientation change
+    requestAnimationFrame(() => {
+      setTimeout(resetView, 100);
+    });
+  }, [isLandscape, isFullscreen, isMobile, resetView]);
+
+  const toggleFullScreen = useCallback(() => {
+    // Determine if we are currently in fullscreen mode (either API or custom state)
+    const isCurrentlyFullscreen = !!document.fullscreenElement || isFullscreen;
+
+    const performReset = () => {
+      // Small delay to allow layout to settle
+      requestAnimationFrame(() => {
+        setTimeout(resetView, 100);
+      });
+    };
+
+    if (!isCurrentlyFullscreen) {
+      const enterFullScreen = async () => {
+        // Fallback for iOS/unsupported browsers or if native failed
+        setIsFullscreen(true);
+        performReset();
+
+        // Native platform handling
+        if (Capacitor.isNativePlatform()) {
+          try {
+            // Hide status bar
+            await StatusBar.hide().catch((e) => console.warn('StatusBar hide failed:', e));
+
+            // Attempt to lock to landscape if that's the desired fullscreen orientation
+            // Or just unlock to allow rotation. But often fullscreen implies landscape or user preference.
+            // Let's just try to unlock or maintain current.
+            // Actually, based on periodic-table, let's just ensure we are in a good state.
+            // periodic-table locks to landscape on fullscreen:
+            // await ScreenOrientation.lock({ orientation: 'landscape' });
+            // For map app, maybe we don't force landscape, but we should handle it if needed.
+            // For now, let's just stick to StatusBar hiding which is the main visual thing.
+          } catch (e) {
+            console.warn('Native plugin error:', e);
+          }
+        }
+      };
+
+      // Native platform check (Android/iOS) or Mobile Browser to avoid system overlay messages
+      if (Capacitor.isNativePlatform() || isMobile) {
+        enterFullScreen();
+      }
+      // Try native fullscreen first (for Desktop Web)
+      else if (mapContainerRef.current?.requestFullscreen) {
+        mapContainerRef.current.requestFullscreen()
+          .then(() => {
+            performReset();
+          })
+          .catch((err) => {
+            console.warn(`Native fullscreen failed, falling back to CSS: ${err.message}`);
+            enterFullScreen();
+          });
+      } else {
+        enterFullScreen();
+      }
+    } else {
+      // Exit fullscreen
+      if (Capacitor.isNativePlatform() || isMobile) {
+        try {
+          if (Capacitor.isNativePlatform()) {
+            StatusBar.show().catch((e) => console.warn('StatusBar show failed:', e));
+            // ScreenOrientation.unlock().catch(() => {});
+          }
+        } catch (e) {
+          console.warn('StatusBar plugin error:', e);
+        }
+        setIsFullscreen(false);
+        performReset();
+      } else if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => { });
+        performReset();
+        setIsFullscreen(false);
+      } else {
+        setIsFullscreen(false);
+        performReset();
+      }
+    }
+  }, [isFullscreen, resetView, isMobile]);
+
   // Store latest values in refs to avoid re-renders
   const activeLocationsRef = useRef<Set<string>>(new Set());
   const labelModeRef = useRef<LabelMode>('none');
   const currentScopeRef = useRef<Scope>(currentScope);
+  const isFullscreenRef = useRef(isFullscreen);
 
   // Keep refs in sync with state (but don't trigger re-renders)
   useEffect(() => {
     activeLocationsRef.current = activeLocations;
     labelModeRef.current = labelMode;
     currentScopeRef.current = currentScope;
-  }, [activeLocations, labelMode, currentScope]);
+    isFullscreenRef.current = isFullscreen;
+  }, [activeLocations, labelMode, currentScope, isFullscreen]);
 
   // Handle updates when state changes
   useEffect(() => {
@@ -3152,11 +3334,11 @@ function App() {
 
   return (
     <div
-      className={`flex flex-col pb-2 md:py-4 md:px-4 overflow-hidden box-border pb-safe md:pb-4 ${isAndroid ? 'pt-8' : 'pt-safe'}`}
+      className={`flex flex-col ${isMobile && isLandscape ? (Capacitor.isNativePlatform() ? 'pt-native px-safe pb-1' : 'pt-2 pb-1') + ' px-1 md:px-2' : 'pb-2 md:py-4 md:px-4 pb-safe md:pb-4 ' + (Capacitor.isNativePlatform() ? 'pt-native' : (isMobile ? 'pt-2' : 'pt-safe'))} overflow-hidden box-border`}
       style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
-      <header className="relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 sm:py-3 px-2.5 sm:px-6 mb-2 sm:mb-3 bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 mx-2 md:mx-0 flex-shrink-0">
+      <header className={`relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center ${isMobile && isLandscape ? 'py-1.5 px-3 mb-2' : 'py-2 sm:py-3 px-2.5 sm:px-6 mb-3 sm:mb-4'} bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 ${isMobile && isLandscape ? 'mx-1 md:mx-0' : 'mx-2 md:mx-0'} flex-shrink-0`}>
         <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
           <div className="flex items-center space-x-1.5 flex-shrink-0">
             <img
@@ -3213,12 +3395,12 @@ function App() {
 
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm font-medium">
-          <div className="flex items-center space-x-0.5 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg sm:rounded-xl border border-amber-200">
+        <div className={`flex items-center ${isMobile && isLandscape ? 'space-x-1' : 'space-x-2'} sm:space-x-4 text-xs sm:text-sm font-medium`}>
+          <div className={`flex items-center space-x-0.5 sm:space-x-2 ${isMobile && isLandscape ? 'px-1.5 py-1' : 'px-2 sm:px-2 py-1.5 sm:py-2'} bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg sm:rounded-xl border border-amber-200`}>
             <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">{locationsCount}</span>
             <span className="text-amber-700 font-semibold">{locationTypeLabel}</span>
           </div>
-          <div className="flex items-center space-x-0.5 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg sm:rounded-xl border border-indigo-200">
+          <div className={`flex items-center space-x-0.5 sm:space-x-2 ${isMobile && isLandscape ? 'px-1.5 py-1' : 'px-2 sm:px-2 py-1.5 sm:py-2'} bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg sm:rounded-xl border border-indigo-200`}>
             <span className="text-lg sm:text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               {percentage}%
             </span>
@@ -3226,7 +3408,7 @@ function App() {
           </div>
 
           {/* Auth Section */}
-          <div className="flex items-center pl-2 sm:pl-4 border-l border-gray-200 ml-1 sm:ml-2">
+          <div className={`flex items-center border-l border-gray-200 ${isMobile && isLandscape ? 'pl-1 ml-0.5' : 'pl-2 sm:pl-4 ml-1 sm:ml-2'}`}>
             {user ? (
               <div className="relative group">
                 <button
@@ -3321,10 +3503,10 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-1 relative mx-2 md:mx-0 min-h-0 md:gap-4">
+      <div className={`flex flex-1 relative ${isMobile && isLandscape ? 'mx-1 md:mx-0 gap-2 md:gap-2' : 'mx-2 md:mx-0 md:gap-4'} min-h-0`}>
         {/* Map Container */}
-        <div className="flex-grow bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-4 sm:px-6 sm:py-6 relative flex flex-col border border-white/20 pb-3 md:pb-6">
-          <div className="flex items-center mb-2 sm:mb-4 border-b pb-2 sm:pb-3 flex-wrap gap-2 sm:gap-3">
+        <div className={`flex-grow flex flex-col ${isFullscreen ? 'relative' : `bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl ${isMobile && isLandscape ? 'px-4 py-2 pb-2' : 'px-4 py-4 sm:px-6 sm:py-6 pb-3 md:pb-6'} relative border border-white/20`}`}>
+          <div className={`flex items-center ${isMobile && isLandscape ? 'mb-1 pb-1' : 'mb-2 sm:mb-4 border-b pb-2 sm:pb-3'} flex-wrap gap-2 sm:gap-3`}>
             <div className="flex items-center gap-2 sm:gap-3">
               <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
               {/* Mobile List Toggle Button */}
@@ -3686,7 +3868,7 @@ function App() {
           <div
             id="map-container"
             ref={mapContainerRef}
-            className="flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50"
+            className={`flex-grow w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-white/50 ${isFullscreen ? '!fixed !inset-0 !z-[100] !w-screen !h-screen !m-0 rounded-none border-0' : ''}`}
             style={{
               userSelect: 'none',
               WebkitUserSelect: 'none',
@@ -3703,7 +3885,28 @@ function App() {
             }}
             onDragStart={(e) => e.preventDefault()}
             onContextMenu={(e) => e.preventDefault()}
-          ></div>
+          >
+            {isLandscape && isMobile && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFullScreen();
+                }}
+                className={`absolute z-[60] p-2 transition-colors ${isFullscreen ? 'top-4 right-8' : 'top-2 right-4'}`}
+                title={isFullscreen ? "Exit Full Screen" : "Enter Full Screen"}
+              >
+                {isFullscreen ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4M4 4l5 5M20 8V4h-4M20 4l-5 5M4 16v4h4M4 20l5-5M20 16v4h-4M20 20l-5-5" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
 
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm z-50 rounded-xl pointer-events-none">
@@ -3844,7 +4047,7 @@ function App() {
       </div>
 
       {/* Notification Container */}
-      <div id="notification-container" className="fixed bottom-4 left-4 z-50"></div>
+      <div id="notification-container" className="fixed bottom-4 left-4 z-[200] pb-safe pl-safe"></div>
 
       {/* Auth Modal */}
       <SignInModal

@@ -247,4 +247,13 @@
   .pt-safe {
     padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
   }
+
+  .pt-native {
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+  }
+
+  .px-safe {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
 }

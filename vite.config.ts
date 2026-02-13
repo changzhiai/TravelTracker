@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react'
 // If repo is at root (username.github.io), base should be '/'
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Updated for root deployment (AWS EC2); '/TravelTracker/' for GitHub Pages base path
+  base: process.env.VITE_APP_TARGET === 'mobile' ? './' : '/',
   server: {
     proxy: {
       '/api': {
