@@ -57,12 +57,12 @@ export const authService = {
         }
     },
 
-    async googleLogin(token: string): Promise<{ user: User | null; error?: string }> {
+    async googleLogin(token: string, isAccessToken: boolean = false): Promise<{ user: User | null; error?: string }> {
         try {
             const response = await fetch(`${API_URL}/google-login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
+                body: JSON.stringify({ token, isAccessToken })
             });
 
             if (response.ok) {

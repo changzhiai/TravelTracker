@@ -22,6 +22,7 @@ app.use(express.static(path.join(__dirname, '../dist')));
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+console.log('Google Auth initialized with Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Loaded' : 'MISSING');
 
 // Email Transporter
 // Supports Gmail, Outlook (Hotmail), etc. via standard services or SMTP
@@ -150,16 +151,58 @@ app.post('/api/reset-password', (req, res) => {
 
 // Google Login
 app.post('/api/google-login', async (req, res) => {
-    const { token } = req.body;
+    const { token, isAccessToken } = req.body;
     if (!token) return res.status(400).json({ error: 'Token is required' });
 
     try {
-        const ticket = await googleClient.verifyIdToken({
-            idToken: token,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
-        const payload = ticket.getPayload();
-        const { sub, email, name, picture } = payload;
+        let email, name;
+
+        if (isAccessToken) {
+            console.log('Verifying Google access token...');
+            try {
+                // Fetch user info using the access token
+                const gResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!gResponse.ok) {
+                    const errorData = await gResponse.text();
+                    console.error(`Google userinfo fetch failed with status ${gResponse.status}:`, errorData);
+
+                    // Try tokeninfo as fallback if userinfo fails
+                    console.log('Trying tokeninfo fallback...');
+                    const tiResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${token}`);
+                    if (tiResponse.ok) {
+                        const tiData = await tiResponse.json();
+                        email = tiData.email;
+                        name = ''; // tokeninfo doesn't always have name
+                        console.log('Tokeninfo fallback successful for:', email);
+                    } else {
+                        throw new Error(`Google verification failed: Userinfo(${gResponse.status}) and Tokeninfo(${tiResponse.status})`);
+                    }
+                } else {
+                    const gData = await gResponse.json();
+                    console.log('Google userinfo response received for:', gData.email);
+                    email = gData.email;
+                    name = gData.name;
+                }
+            } catch (err) {
+                console.error('Access token verification flow failed:', err);
+                throw err;
+            }
+        } else {
+            console.log('Verifying Google ID token...');
+            const ticket = await googleClient.verifyIdToken({
+                idToken: token,
+                audience: process.env.GOOGLE_CLIENT_ID
+            });
+            const payload = ticket.getPayload();
+            email = payload.email;
+            name = payload.name;
+            console.log('Google ID token verified for:', email);
+        }
 
         // Use email as a way to find/create user
         // If user exists by email, log them in.

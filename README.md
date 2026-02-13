@@ -141,7 +141,7 @@ npm run build:mobile
 npx cap sync
 ```
 
-See the [Mobile Guide](docs/MOBILE_GUIDE.md) for detailed instructions on running in Xcode and Android Studio.
+See the [Mobile Guide](docs/MOBILE_GUIDE.md) for detailed instructions on running in Xcode and Android Studio, and the [Authentication Guide](docs/AUTH_CONFIG.md) for setting up Google and Apple login.
 
 ## Deployment to GitHub Pages
 

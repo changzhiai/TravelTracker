@@ -27,7 +27,9 @@ This project has been configured with [Capacitor](https://capacitorjs.com/) to p
 3.  Select a virtual device (emulator) or a connected phone.
 4.  Click the **Run** button (green play icon).
 
-## Backend Configuration (Crucial!)
+## Backend & Authentication Configuration (Crucial!)
+
+Before running the app on a device, you must configure the backend URL and authentication providers (Google/Apple). See the [Authentication Guide](AUTH_CONFIG.md) for detailed setup instructions.
 
 Your application relies on a backend server (`server/server.js`). 
 - **In a web browser**, the app can connect to `http://localhost:3001` easily.
