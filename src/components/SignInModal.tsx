@@ -145,7 +145,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                 onClick={e => e.stopPropagation()}
             >
                 <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    {mode === 'signin' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Reset Password'}
+                    {mode === 'signin' ? 'Sign In' : mode === 'register' ? 'Register' : 'Reset Password'}
                 </h2>
                 <p className="text-gray-600 mb-6 text-sm">
                     {mode === 'signin'
