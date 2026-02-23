@@ -8,12 +8,23 @@ interface SignInModalProps {
     isOpen: boolean;
     onClose: () => void;
     onLoginSuccess: (username: string) => void;
+    initialMode?: Mode;
 }
 
 type Mode = 'signin' | 'register' | 'reset';
 
-export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProps) {
-    const [mode, setMode] = useState<Mode>('signin');
+export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'signin' }: SignInModalProps) {
+    const [mode, setMode] = useState<Mode>(initialMode);
+
+    // Sync mode when initialMode prop changes (e.g. from URL navigation)
+    React.useEffect(() => {
+        if (isOpen) {
+            setMode(initialMode);
+            setResetStep('email');
+            setError(null);
+        }
+    }, [isOpen, initialMode]);
+
     const [resetStep, setResetStep] = useState<'email' | 'verification'>('email');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -53,7 +64,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
 
         if (mode === 'signin') {
             if (!username.trim() || !password.trim()) {
-                setError('Username or Email and password are required.');
+                setError('Username and password are required.');
                 return;
             }
             const result = await authService.login(username.trim(), password.trim());
@@ -64,8 +75,8 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                 setError(result.error || 'Invalid username or password.');
             }
         } else if (mode === 'register') {
-            if (!username.trim() || !password.trim()) {
-                setError('Username and password are required.');
+            if (!username.trim() || !password.trim() || !email.trim()) {
+                setError('Username, password, and email are required.');
                 return;
             }
             const success = await authService.register(username.trim(), password.trim(), email.trim() || undefined);
@@ -149,7 +160,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                     {mode !== 'reset' && (
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                                Username or Email
+                                Username
                             </label>
                             <input
                                 type="text"
@@ -157,7 +168,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white/50"
-                                placeholder="Username or Email"
+                                placeholder="Username"
                                 autoFocus
                                 required
                             />
@@ -168,7 +179,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                     {(mode === 'register' || (mode === 'reset' && resetStep === 'email')) && (
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                {mode === 'reset' ? 'Email' : 'Email'} <span className="text-gray-400 font-normal">{mode === 'reset' ? '(Required)' : '(Optional)'}</span>
+                                Email
                             </label>
                             <input
                                 type="email"
@@ -176,8 +187,8 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess }: SignInModalProp
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white/50"
-                                placeholder={mode === 'reset' ? "Associated email address" : "For password reset"}
-                                required={mode === 'reset'}
+                                placeholder={mode === 'reset' ? "Associated email address" : "Email address"}
+                                required
                             />
                         </div>
                     )}

@@ -87,7 +87,7 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { DeleteAccountInfo } from './components/DeleteAccountInfo';
 
 function App() {
-  // Simple routing
+  // Simple routing for static pages
   if (window.location.pathname === '/privacy') {
     return <PrivacyPolicy />;
   }
@@ -95,8 +95,38 @@ function App() {
     return <DeleteAccountInfo />;
   }
 
+  // Extract initial scope from URL for direct linking/SEO
+  const getInitialScope = (): Scope => {
+    const path = window.location.pathname.toLowerCase();
+    if (path.startsWith('/usa-parks') || path.startsWith('/usaparks')) return 'usaParks';
+    if (path.startsWith('/usa')) return 'usa';
+    if (path.startsWith('/europe')) return 'europe';
+    if (path.startsWith('/china')) return 'china';
+    if (path.startsWith('/india')) return 'india';
+    return 'world';
+  };
+
   // State management
-  const [currentScope, setCurrentScope] = useState<Scope>('world');
+  const [currentScope, setCurrentScope] = useState<Scope>(getInitialScope());
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+
+      // Handle modal routes
+      if (path === '/login' || path === '/register' || path === '/reset') {
+        setModalMode(path === '/register' ? 'register' : path === '/reset' ? 'reset' : 'signin');
+        setIsSignInModalOpen(true);
+        return;
+      }
+
+      const scope = getInitialScope();
+      setCurrentScope(scope);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [allActiveLocations, setAllActiveLocations] = useState<Record<Scope, Set<string>>>({
     world: new Set(),
     usa: new Set(),
@@ -121,9 +151,10 @@ function App() {
   const [isScopeDropdownOpen, setIsScopeDropdownOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'signin' | 'register' | 'reset'>('signin');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
-  const [profileInitialTab, setProfileInitialTab] = useState<'stats' | 'edit'>('stats');
+  const [profileInitialTab, setProfileInitialTab] = useState<'stats' | 'edit' | 'account'>('stats');
   const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
   const saveDropdownRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
@@ -452,6 +483,21 @@ function App() {
       localStorage.removeItem('travel_tracker_logout_msg');
     }
   }, [showNotification]);
+
+  // Handle initial modal routing (e.g. /login, /register, /reset) on load
+  useEffect(() => {
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/login' || path === '/register' || path === '/reset') {
+      setModalMode(path === '/register' ? 'register' : path === '/reset' ? 'reset' : 'signin');
+      setIsSignInModalOpen(true);
+      // Clean up URL visually so it goes back to the map scope without reloading
+      const scopeMap: Record<Scope, string> = {
+        world: '/world', usa: '/usa', usaParks: '/usa-parks',
+        europe: '/europe', china: '/china', india: '/india'
+      };
+      window.history.replaceState({}, '', scopeMap[currentScope]);
+    }
+  }, [currentScope]);
 
   // Ref to track which scope the current activeLocations belongs to
   const loadedScopeRef = useRef<Scope | null>(null);
@@ -1636,6 +1682,21 @@ function App() {
 
     // Update scope - the useEffect will handle all rendering with proper transform
     setCurrentScope(scope);
+
+    // Update URL for SEO and friendly links
+    const pathMap: Record<Scope, string> = {
+      world: '/world',
+      usa: '/usa',
+      usaParks: '/usa-parks',
+      europe: '/europe',
+      china: '/china',
+      india: '/india'
+    };
+
+    // Only push if the current path isn't already the target one (e.g. on initial load or back navigation)
+    if (window.location.pathname !== pathMap[scope]) {
+      window.history.pushState({}, '', pathMap[scope]);
+    }
   }, [currentScope, loadUSAData, loadNationalParksData, loadEuropeData, loadChinaData, loadIndiaData]);
 
   const handleScopeOptionClick = useCallback((scopeValue: Scope) => {
@@ -3440,20 +3501,6 @@ function App() {
                   </div>
                   <button
                     onClick={() => {
-                      setProfileInitialTab('edit');
-                      setIsProfileModalOpen(true);
-                      const dropdown = document.getElementById('user-dropdown');
-                      if (dropdown) dropdown.classList.add('hidden');
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    My Profile
-                  </button>
-                  <button
-                    onClick={() => {
                       setProfileInitialTab('stats');
                       setIsProfileModalOpen(true);
                       const dropdown = document.getElementById('user-dropdown');
@@ -3464,7 +3511,36 @@ function App() {
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    My Travels
+                    Travel Stats
+                  </button>
+                  <button
+                    onClick={() => {
+                      setProfileInitialTab('edit');
+                      setIsProfileModalOpen(true);
+                      const dropdown = document.getElementById('user-dropdown');
+                      if (dropdown) dropdown.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Edit Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setProfileInitialTab('account');
+                      setIsProfileModalOpen(true);
+                      const dropdown = document.getElementById('user-dropdown');
+                      if (dropdown) dropdown.classList.add('hidden');
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    My Account
                   </button>
                   <button
                     onClick={() => {
@@ -4054,6 +4130,7 @@ function App() {
         isOpen={isSignInModalOpen}
         onClose={() => setIsSignInModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+        initialMode={modalMode}
       />
 
       {/* Profile Modal */}

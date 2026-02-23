@@ -98,15 +98,29 @@ app.post('/api/register', (req, res) => {
         return res.status(400).json({ error: 'Username and password required' });
     }
 
-    db.createUser(username, password, email || null, (err, userId) => {
-        if (err) {
-            if (err.message.includes('UNIQUE constraint failed')) {
-                return res.status(409).json({ error: 'Username already exists' });
+    const performRegistration = () => {
+        db.createUser(username, password, email || null, (err, userId) => {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(409).json({ error: 'Username already exists' });
+                }
+                return res.status(500).json({ error: err.message });
             }
-            return res.status(500).json({ error: err.message });
-        }
-        res.status(201).json({ message: 'User created', userId });
-    });
+            res.status(201).json({ message: 'User created', userId });
+        });
+    };
+
+    if (email) {
+        db.getUserByEmail(email, (err, user) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (user) {
+                return res.status(409).json({ error: 'Email already in use' });
+            }
+            performRegistration();
+        });
+    } else {
+        performRegistration();
+    }
 });
 
 // Reset Password
@@ -313,11 +327,22 @@ app.post('/api/apple-login', async (req, res) => {
 // Login
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
+    console.log(`Login attempt for: ${username}`);
 
     db.verifyUser(username, password, (err, isValid, user) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!isValid) return res.status(401).json({ error: 'Invalid credentials' });
+        if (err) {
+            console.error(`Login error for ${username}:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        if (!isValid) {
+            console.warn(`Invalid login attempt for: ${username}`);
+            if (user && user.isOAuthOnly) {
+                return res.status(401).json({ error: 'This account is linked to Google or Apple. Please use the social login buttons below.' });
+            }
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
 
+        console.log(`Login successful for: ${user.username}`);
         res.json({ message: 'Login successful', user: { id: user.id, username: user.username, email: user.email, hasPassword: true } });
     });
 });
@@ -350,6 +375,35 @@ app.put('/api/user/:id', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
         res.json({ message: 'Profile updated successfully' });
+    });
+});
+
+// Update User Password
+app.put('/api/user/:id/password', (req, res) => {
+    const { id } = req.params;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword) {
+        return res.status(400).json({ error: 'New password is required' });
+    }
+
+    db.getUserById(id, (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // If user already has a password, they MUST provide the correct current password
+        if (user.password) {
+            const bcrypt = require('bcryptjs');
+            if (!currentPassword || !bcrypt.compareSync(currentPassword, user.password)) {
+                return res.status(401).json({ error: 'Incorrect current password' });
+            }
+        }
+
+        // Update the password
+        db.updateUserPassword(id, newPassword, (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Password updated successfully' });
+        });
     });
 });
 

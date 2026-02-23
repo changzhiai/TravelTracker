@@ -2,8 +2,8 @@ import React from 'react';
 
 export const PrivacyPolicy: React.FC = () => {
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans p-6 md:p-12">
-            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100">
+        <div className="min-h-screen h-auto bg-gray-50 flex flex-col font-sans p-6 md:p-12 overflow-y-auto">
+            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 my-auto">
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-6">Privacy Policy</h1>
                 <p className="text-gray-500 mb-8">Last updated: January 27, 2026</p>
 

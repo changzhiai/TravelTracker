@@ -13,14 +13,6 @@
     height: 100%;
     width: 100%;
     margin: 0;
-    overflow: hidden;
-    /* Prevent page scroll */
-    position: fixed;
-    /* Lock body to viewport */
-    top: 0;
-    left: 0;
-    overscroll-behavior: none;
-    /* Disable pull-to-refresh/bounce */
   }
 
   /* Mobile-specific viewport and safe area handling */

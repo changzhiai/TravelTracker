@@ -117,12 +117,21 @@ const getUserById = (id, callback) => {
 };
 
 const verifyUser = (identifier, password, callback) => {
-    db.get("SELECT * FROM users WHERE username = ? OR email = ?", [identifier, identifier], (err, user) => {
-        if (err || !user) {
-            return callback(err, false, null);
+    // Search for any user matching username or email
+    db.all("SELECT * FROM users WHERE username = ? OR email = ?", [identifier, identifier], (err, rows) => {
+        if (err) return callback(err, false, null);
+        if (!rows || rows.length === 0) return callback(null, false, null);
+
+        // Prioritize finding an account with a password (standard account)
+        const standardAccount = rows.find(r => r.password);
+        if (standardAccount) {
+            const isValid = bcrypt.compareSync(password, standardAccount.password);
+            return callback(null, isValid, standardAccount);
         }
-        const isValid = bcrypt.compareSync(password, user.password);
-        callback(null, isValid, user);
+
+        // If no password account exists, but we found accounts, it means they are OAuth-only
+        const oauthAccount = { ...rows[0], isOAuthOnly: true };
+        callback(null, false, oauthAccount);
     });
 };
 

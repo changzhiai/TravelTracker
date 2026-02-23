@@ -214,6 +214,24 @@ export const authService = {
         }
     },
 
+    async updatePassword(id: number, currentPassword: string | null, newPassword: string): Promise<{ success: boolean; message?: string }> {
+        try {
+            const response = await fetch(`${API_URL}/user/${id}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                return { success: true };
+            }
+            return { success: false, message: data.error || 'Failed to update password' };
+        } catch (error) {
+            return { success: false, message: 'Network error' };
+        }
+    },
+
     async deleteAccount(id: number, password: string): Promise<{ success: boolean; message?: string }> {
         try {
             const response = await fetch(`${API_URL}/user/${id}`, {

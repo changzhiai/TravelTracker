@@ -7,7 +7,7 @@ interface ProfileModalProps {
     user: User | null;
     onUpdateUser: (newUsername: string) => void;
     activeLocations: Record<string, Set<string>>;
-    initialTab?: 'stats' | 'edit';
+    initialTab?: 'stats' | 'edit' | 'account';
     stats?: { key: string; label: string; total: number; count: number }[];
 }
 
@@ -16,9 +16,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
     const [email, setEmail] = useState('');
     const [hasPassword, setHasPassword] = useState<boolean | undefined>(user?.hasPassword);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-    const [activeTab, setActiveTab] = useState<'stats' | 'edit'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'stats' | 'edit' | 'account'>(initialTab);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     useEffect(() => {
         if (isOpen) {
@@ -26,6 +29,9 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
             setShowDeleteConfirm(false);
             setDeletePassword('');
             setHasPassword(user?.hasPassword);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
         }
     }, [isOpen, initialTab, user]);
 
@@ -80,6 +86,30 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
         }
     };
 
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMessage(null);
+
+        if (!user || !user.id) return;
+
+        if (newPassword !== confirmPassword) {
+            setMessage({ text: 'New passwords do not match.', type: 'error' });
+            return;
+        }
+
+        const result = await authService.updatePassword(user.id, hasPassword ? currentPassword : null, newPassword);
+
+        if (result.success) {
+            setMessage({ text: hasPassword ? 'Password updated successfully!' : 'Password set successfully!', type: 'success' });
+            setHasPassword(true);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } else {
+            setMessage({ text: result.message || 'Failed to update password.', type: 'error' });
+        }
+    };
+
     // Stats calculations
     const stats = passedStats || [
         { key: 'world', label: 'World', total: 176, count: activeLocations['world']?.size || 0 },
@@ -119,6 +149,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                         onClick={() => setActiveTab('edit')}
                     >
                         Edit Profile
+                    </button>
+                    <button
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'account' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        onClick={() => setActiveTab('account')}
+                    >
+                        My Account
                     </button>
                 </div>
 
@@ -164,11 +200,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white/50"
+                                    required
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Used for password recovery.</p>
+                                <p className="text-xs text-gray-500 mt-1">Used for password recovery and shared access.</p>
                             </div>
 
-                            {message && (
+                            {message && activeTab === 'edit' && (
                                 <div className={`text-sm font-medium px-3 py-2 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                                     {message.text}
                                 </div>
@@ -179,57 +216,117 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                                     type="submit"
                                     className="w-full px-4 py-2 text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95"
                                 >
-                                    Save Changes
+                                    Save Profile Changes
                                 </button>
                             </div>
                         </form>
                     )}
 
-                    {activeTab === 'edit' && (
-                        <div className="mt-8 pt-6 border-t border-gray-100">
-                            <h3 className="text-sm font-bold text-red-600 mb-2 uppercase tracking-wider">Danger Actions</h3>
-                            {!showDeleteConfirm ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    className="w-full px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors border border-red-200"
-                                >
-                                    Delete Account
-                                </button>
-                            ) : (
-                                <div className="bg-red-50 p-4 rounded-xl border border-red-200 animate-fade-in">
-                                    <p className="text-sm text-red-800 mb-3 font-medium">
-                                        Are you sure? This action cannot be undone. All your travels will be lost.
-                                    </p>
-                                    {hasPassword !== false && (
+                    {activeTab === 'account' && (
+                        <div className="space-y-8 animate-fade-in">
+                            <form onSubmit={handleUpdatePassword} className="space-y-4">
+                                <h3 className="text-sm font-bold text-gray-800 mb-2 uppercase tracking-wider">
+                                    {hasPassword ? 'Change Password' : 'Set Password'}
+                                </h3>
+
+                                {hasPassword && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
                                         <input
                                             type="password"
-                                            placeholder="Confirm your password"
-                                            className="w-full px-3 py-2 border border-red-300 rounded-lg mb-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                                            value={deletePassword}
-                                            onChange={(e) => setDeletePassword(e.target.value)}
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white/50"
+                                            required
                                         />
-                                    )}
-                                    <div className="flex space-x-2">
-                                        <button
-                                            onClick={handleDeleteAccount}
-                                            disabled={hasPassword !== false && !deletePassword}
-                                            className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Confirm Delete
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setShowDeleteConfirm(false);
-                                                setDeletePassword('');
-                                            }}
-                                            className="flex-1 px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
                                     </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {hasPassword ? 'New Password' : 'Password'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white/50"
+                                        required
+                                    />
                                 </div>
-                            )}
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm {hasPassword ? 'New ' : ''}Password</label>
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white/50"
+                                        required
+                                    />
+                                </div>
+
+                                {message && activeTab === 'account' && (
+                                    <div className={`text-sm font-medium px-3 py-2 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                        {message.text}
+                                    </div>
+                                )}
+
+                                <div className="pt-2">
+                                    <button
+                                        type="submit"
+                                        className="w-full px-4 py-2 text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95"
+                                    >
+                                        {hasPassword ? 'Update Password' : 'Set Password'}
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="pt-6 border-t border-gray-100">
+                                <h3 className="text-sm font-bold text-red-600 mb-2 uppercase tracking-wider">Danger Actions</h3>
+                                {!showDeleteConfirm ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="w-full px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors border border-red-200"
+                                    >
+                                        Delete Account
+                                    </button>
+                                ) : (
+                                    <div className="bg-red-50 p-4 rounded-xl border border-red-200 animate-fade-in">
+                                        <p className="text-sm text-red-800 mb-3 font-medium">
+                                            Are you sure? This action cannot be undone. All your travels will be lost.
+                                        </p>
+                                        {hasPassword !== false && (
+                                            <input
+                                                type="password"
+                                                placeholder="Confirm your password"
+                                                className="w-full px-3 py-2 border border-red-300 rounded-lg mb-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                value={deletePassword}
+                                                onChange={(e) => setDeletePassword(e.target.value)}
+                                            />
+                                        )}
+                                        <div className="flex space-x-2">
+                                            <button
+                                                onClick={handleDeleteAccount}
+                                                disabled={hasPassword !== false && !deletePassword}
+                                                className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Confirm Delete
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowDeleteConfirm(false);
+                                                    setDeletePassword('');
+                                                }}
+                                                className="flex-1 px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
