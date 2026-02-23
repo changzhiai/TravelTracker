@@ -121,6 +121,11 @@ function App() {
         return;
       }
 
+      if (path === '/about') {
+        setIsAboutModalOpen(true);
+        return;
+      }
+
       const scope = getInitialScope();
       setCurrentScope(scope);
     };
@@ -487,9 +492,14 @@ function App() {
   // Handle initial modal routing (e.g. /login, /register, /reset) on load
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
-    if (path === '/login' || path === '/register' || path === '/reset') {
-      setModalMode(path === '/register' ? 'register' : path === '/reset' ? 'reset' : 'signin');
-      setIsSignInModalOpen(true);
+    if (path === '/login' || path === '/register' || path === '/reset' || path === '/about') {
+      if (path === '/about') {
+        setIsAboutModalOpen(true);
+      } else {
+        setModalMode(path === '/register' ? 'register' : path === '/reset' ? 'reset' : 'signin');
+        setIsSignInModalOpen(true);
+      }
+
       // Clean up URL visually so it goes back to the map scope without reloading
       const scopeMap: Record<Scope, string> = {
         world: '/world', usa: '/usa', usaParks: '/usa-parks',
