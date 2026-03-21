@@ -1686,6 +1686,8 @@ function App() {
       await loadChinaData();
     } else if (scope === 'india') {
       await loadIndiaData();
+    } else if (scope === 'world') {
+      await loadWorldData();
     }
 
     setIsLoading(false);
@@ -1707,7 +1709,7 @@ function App() {
     if (window.location.pathname !== pathMap[scope]) {
       window.history.pushState({}, '', pathMap[scope]);
     }
-  }, [currentScope, loadUSAData, loadNationalParksData, loadEuropeData, loadChinaData, loadIndiaData]);
+  }, [currentScope, loadUSAData, loadNationalParksData, loadEuropeData, loadChinaData, loadIndiaData, loadWorldData]);
 
   const handleScopeOptionClick = useCallback((scopeValue: Scope) => {
     handleScopeSelection(scopeValue);
@@ -2491,7 +2493,22 @@ function App() {
       try {
         // Wait a bit for container to have dimensions
         await new Promise(resolve => setTimeout(resolve, 100));
-        await loadWorldData();
+
+        // Load data based on current scope properly
+        if (currentScope === 'usa' || currentScope === 'usaParks') {
+          await loadUSAData();
+          if (currentScope === 'usaParks') {
+            await loadNationalParksData();
+          }
+        } else if (currentScope === 'europe') {
+          await loadEuropeData();
+        } else if (currentScope === 'china') {
+          await loadChinaData();
+        } else if (currentScope === 'india') {
+          await loadIndiaData();
+        } else {
+          await loadWorldData();
+        }
         // Ensure container has dimensions before rendering
         if (mapContainerRef.current) {
           const rect = mapContainerRef.current.getBoundingClientRect();
@@ -3387,9 +3404,9 @@ function App() {
         });
       });
     }
-    // Only depend on scope and feature count, NOT on functions or activeLocations
+    // Only depend on scope and feature counts, NOT on functions or activeLocations
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentScope, currentFeatures.length]);
+  }, [currentScope, currentFeatures.length, usNationalParkFeatures.length]);
 
   const listItems: string[] = useMemo(() => {
     const names = new Set(selectableFeatures
