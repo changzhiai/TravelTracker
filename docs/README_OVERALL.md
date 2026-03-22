@@ -19,22 +19,22 @@ Or you can check the dynamic version on: https://travel-tracker.org/
 <div align="center">
 
 #### 🌍 World Map
-![World Map](docs/figures/World.png)
+![World Map](./figures/World.png)
 
 #### 🇺🇸 USA Map
-![USA Map](docs/figures/USA.png)
+![USA Map](./figures/USA.png)
 
 #### 🇪🇺 Europe Map
-![Europe Map](docs/figures/Europe.png)
+![Europe Map](./figures/Europe.png)
 
 #### 🇨🇳 China Map
-![China Map](docs/figures/China.png)
+![China Map](./figures/China.png)
 
 #### 🇮🇳 India Map
-![India Map](docs/figures/India.png)
+![India Map](./figures/India.png)
 
 #### 🏞️ US National Parks Map
-![US National Parks Map](docs/figures/US_NPs.png)
+![US National Parks Map](./figures/US_NPs.png)
 
 </div>
 
@@ -141,7 +141,7 @@ npm run build:mobile
 npx cap sync
 ```
 
-See the [Mobile Guide](docs/MOBILE_GUIDE.md) for detailed instructions on running in Xcode and Android Studio, and the [Authentication Guide](docs/AUTH_CONFIG.md) for setting up Google and Apple login.
+See the [Mobile Guide](./MOBILE_GUIDE.md) for detailed instructions on running in Xcode and Android Studio, and the [Authentication Guide](./AUTH_CONFIG.md) for setting up Google and Apple login.
 
 ## Deployment to GitHub Pages
 

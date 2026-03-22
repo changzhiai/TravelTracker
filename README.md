@@ -2,9 +2,9 @@
 [![Live Website](https://img.shields.io/badge/Live-Website-brightgreen)](https://travel-tracker.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-![Logo](docs/figures/logo.png)
+<img src="public/logo_tt.png" width="200">
 
-An interactive world map application that helps you track your travels. It can give you total numbers and percentages of how many countries, US states, European countries, Chinese provinces, Indian states, and US national parks you have visited. It also allows you to login and save your travel data to the cloud, and export, share, or download the maps.
+An interactive map application that helps you track your travels. It can give you total numbers and percentages of how many countries in the world, US states, European countries, Chinese provinces, Indian states, and US national parks you have visited. It also allows you to login and save your travel data to the cloud, and export, share, or download the maps.
 
 ## 🎯 Access the Application
 
@@ -16,7 +16,7 @@ You can check the dynamic website at https://travel-tracker.org/
 
 You can download the mobile app from the App Store and Google Play by scanning the QR code below:
 
-![QR Code](docs/figures/QR_code.png)  
+![QR Code](docs/figures/download.png)  
 
 
 
@@ -36,6 +36,7 @@ You can download the mobile app from the App Store and Google Play by scanning t
 - 📊 **Statistics** - View count and percentage of visited locations
 - 📱 **Responsive Design** - Works beautifully on desktop and mobile
 - 🎨 **Modern UI** - Glassmorphism design with gradient effects
+- 🔐 **Authentication** - Google and Apple login
 
 
 
