@@ -85,6 +85,7 @@ const EUROPE_TO_WORLD_MAPPING: Record<string, string> = {
 
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { DeleteAccountInfo } from './components/DeleteAccountInfo';
+import { DownloadApp } from './components/DownloadApp';
 
 function App() {
   // Simple routing for static pages
@@ -93,6 +94,9 @@ function App() {
   }
   if (window.location.pathname === '/delete-account') {
     return <DeleteAccountInfo />;
+  }
+  if (window.location.pathname === '/download' || window.location.pathname === '/app') {
+    return <DownloadApp />;
   }
 
   // Extract initial scope from URL for direct linking/SEO
@@ -500,12 +504,14 @@ function App() {
         setIsSignInModalOpen(true);
       }
 
-      // Clean up URL visually so it goes back to the map scope without reloading
-      const scopeMap: Record<Scope, string> = {
-        world: '/world', usa: '/usa', usaParks: '/usa-parks',
-        europe: '/europe', china: '/china', india: '/india'
-      };
-      window.history.replaceState({}, '', scopeMap[currentScope]);
+      // Clean up URL visually so it goes back to the map scope without reloading, EXCEPT for about which should persist.
+      if (path !== '/about') {
+        const scopeMap: Record<Scope, string> = {
+          world: '/world', usa: '/usa', usaParks: '/usa-parks',
+          europe: '/europe', china: '/china', india: '/india'
+        };
+        window.history.replaceState({}, '', scopeMap[currentScope]);
+      }
     }
   }, [currentScope]);
 
@@ -3422,12 +3428,12 @@ function App() {
 
   return (
     <div
-      className={`flex flex-col ${isMobile && isLandscape ? (Capacitor.isNativePlatform() ? 'pt-native px-safe pb-1' : 'pt-2 pb-1') + ' px-1 md:px-2' : 'pb-2 md:py-4 md:px-4 pb-safe md:pb-4 ' + (Capacitor.isNativePlatform() ? 'pt-native' : (isMobile ? 'pt-2' : 'pt-safe'))} overflow-hidden box-border`}
+      className={`flex flex-col ${isMobile && isLandscape ? (Capacitor.isNativePlatform() ? 'pt-native px-safe pb-1' : 'pt-2 pb-1') + ' px-1 md:px-2' : 'pb-2 md:pt-4 md:px-4 pb-safe md:pb-2 lg:pb-0 ' + (Capacitor.isNativePlatform() ? 'pt-native' : (isMobile ? 'pt-2' : 'pt-safe'))} overflow-hidden box-border`}
       style={{ height: 'var(--app-height, 100vh)' }}
     >
       {/* Header */}
-      <header className={`relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center ${isMobile && isLandscape ? 'py-1.5 px-3 mb-2' : 'py-2 sm:py-3 px-2.5 sm:px-6 mb-3 sm:mb-4'} bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 ${isMobile && isLandscape ? 'mx-1 md:mx-0' : 'mx-2 md:mx-0'} flex-shrink-0`}>
-        <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 gap-y-2 w-full sm:w-auto">
+      <header className={`relative z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center ${isMobile && isLandscape ? 'py-1 px-3 mb-1' : 'py-1.5 sm:py-2 px-2.5 sm:px-6 mb-2 sm:mb-4'} bg-white/95 backdrop-blur-md shadow-xl rounded-2xl border border-white/20 gap-3 sm:gap-0 ${isMobile && isLandscape ? 'mx-1 md:mx-0' : 'mx-2 md:mx-0'} flex-shrink-0`}>
+        <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 gap-y-1 w-full sm:w-auto">
           <div className="flex items-center space-x-1.5 flex-shrink-0">
             <img
               src={logoImage}
@@ -3496,7 +3502,7 @@ function App() {
           </div>
 
           {/* Auth Section */}
-          <div className={`flex items-center border-l border-gray-200 ${isMobile && isLandscape ? 'pl-1 ml-0.5' : 'pl-2 sm:pl-4 ml-1 sm:ml-2'}`}>
+          <div className={`${(!isMobile || (isMobile && isLandscape)) ? 'flex' : 'hidden'} items-center border-l border-gray-200 ${isMobile && isLandscape ? 'pl-1 ml-0.5' : 'pl-2 sm:pl-4 ml-1 sm:ml-2'}`}>
             {user ? (
               <div className="relative group">
                 <button
@@ -3606,16 +3612,16 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className={`flex flex-1 relative ${isMobile && isLandscape ? 'mx-1 md:mx-0 gap-2 md:gap-2' : 'mx-2 md:mx-0 md:gap-4'} min-h-0`}>
+      <div className={`flex flex-1 relative ${isMobile && isLandscape ? 'mx-1 md:mx-0 gap-2 md:gap-2' : 'mx-2 md:mx-0 md:gap-4 min-h-0 pb-15 lg:pb-0'}`}>
         {/* Map Container */}
-        <div className={`flex-grow flex flex-col ${isFullscreen ? 'relative' : `bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl ${isMobile && isLandscape ? 'px-4 py-2 pb-2' : 'px-4 py-4 sm:px-6 sm:py-6 pb-3 md:pb-6'} relative border border-white/20`}`}>
-          <div className={`flex items-center ${isMobile && isLandscape ? 'mb-1 pb-1' : 'mb-2 sm:mb-4 border-b pb-2 sm:pb-3'} flex-wrap gap-2 sm:gap-3`}>
+        <div className={`flex-grow flex flex-col ${isFullscreen ? 'relative' : `bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl ${isMobile && isLandscape ? 'px-4 py-2 pb-2' : 'px-4 py-2 sm:px-6 sm:py-2'} relative border border-white/20`}`}>
+          <div className={`flex items-center ${isMobile && isLandscape ? 'mb-1 pb-1' : 'mb-1 sm:mb-2 border-b pb-1 sm:pb-2'} flex-wrap gap-2 sm:gap-3`}>
             <div className="flex items-center gap-2 sm:gap-3">
               <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent whitespace-nowrap">{mapTitle}</h2>
-              {/* Mobile List Toggle Button */}
+              {/* Mobile List Toggle Button (Hidden in favor of bottom nav, except on landscape) */}
               <button
                 onClick={() => setShowListOnMobile(!showListOnMobile)}
-                className="lg:hidden flex items-center justify-center w-9 h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
+                className={`${isMobile && isLandscape ? 'flex' : 'hidden lg:hidden'} items-center justify-center w-9 h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all`}
                 title="Toggle locations list"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -4025,20 +4031,21 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className={`fixed lg:static ${isAndroid ? 'top-8 rounded-tl-2xl border-t' : 'top-0'} bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 pb-4 ${isAndroid ? 'pt-6' : 'pt-[max(1rem,calc(env(safe-area-inset-top)+1rem))]'} sm:p-6 flex flex-col border-l border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
-          }`}>
+        <div
+          className={`fixed lg:static ${isAndroid ? 'top-8 rounded-tl-2xl border-t' : 'top-0'} bottom-0 right-0 lg:right-auto z-50 lg:z-auto w-80 lg:w-96 max-w-[85vw] lg:max-w-none bg-white/95 backdrop-blur-md shadow-2xl rounded-l-2xl lg:rounded-2xl px-4 ${isMobile && isLandscape ? 'pb-2' : 'pb-20 lg:pb-2'} ${isAndroid ? 'pt-2' : 'pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.5rem))]'} sm:px-6 sm:pt-2 ${isMobile && isLandscape ? 'sm:pb-2' : 'sm:pb-20 lg:sm:pb-2'} flex flex-col border-l border-white/20 transform transition-transform duration-300 ease-in-out ${showListOnMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}
+        >
           {/* Close button for mobile */}
           <button
             onClick={() => setShowListOnMobile(false)}
-            className={`lg:hidden absolute right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10 ${isAndroid ? 'top-5' : 'top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))]'}`}
+            className={`lg:hidden absolute right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-10 ${isAndroid ? 'top-2' : 'top-[max(0.5rem,calc(env(safe-area-inset-top)+0.25rem))]'}`}
             title="Close list"
           >
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
-          <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent border-b border-gray-200 pb-3 mb-4">{listTitle}</h2>
-          <div className="relative mb-4">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent border-b border-gray-200 pb-2 mb-2">{listTitle}</h2>
+          <div className="relative mb-2">
             <input
               type="text"
               value={searchQuery}
@@ -4149,8 +4156,20 @@ function App() {
         )}
       </div>
 
+      {/* Footer */}
+      <footer className={`hidden lg:flex flex-shrink-0 items-center justify-center gap-4 sm:gap-6 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white font-medium ${isMobile && isLandscape ? 'hidden' : ''}`}>
+        <a href="/about" className="hover:text-amber-200 transition-colors">About</a>
+        <span className="text-white/50">|</span>
+        <a href="/privacy" className="hover:text-amber-200 transition-colors">Privacy</a>
+        <span className="text-white/50">|</span>
+        <a href="/download" className="text-white font-bold hover:text-amber-200 transition-colors flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Download App
+        </a>
+      </footer>
+
       {/* Notification Container */}
-      <div id="notification-container" className="fixed bottom-4 left-4 z-[200] pb-safe pl-safe"></div>
+      <div id="notification-container" className={`fixed ${isMobile && !isLandscape ? 'bottom-15' : 'bottom-4'} left-4 z-[200] pb-safe pl-safe transition-all duration-300`}></div>
 
       {/* Auth Modal */}
       <SignInModal
@@ -4174,8 +4193,103 @@ function App() {
       {/* About Modal */}
       <AboutModal
         isOpen={isAboutModalOpen}
-        onClose={() => setIsAboutModalOpen(false)}
+        onClose={() => {
+          setIsAboutModalOpen(false);
+          const path = window.location.pathname.toLowerCase();
+          if (path === '/about') {
+            const scopeMap: Record<Scope, string> = {
+              world: '/world', usa: '/usa', usaParks: '/usa-parks',
+              europe: '/europe', china: '/china', india: '/india'
+            };
+            window.history.pushState({}, '', scopeMap[currentScope]);
+          }
+        }}
       />
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 justify-around items-center pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-[150] shadow-[0_-8px_30px_-5px_rgba(0,0,0,0.1)] ${isMobile && isLandscape ? 'hidden' : 'flex lg:hidden'}`}>
+        <button
+          onClick={() => {
+            setShowListOnMobile(false);
+            setIsProfileModalOpen(false);
+            setIsSignInModalOpen(false);
+            setIsAboutModalOpen(false);
+          }}
+          className={`group flex flex-col items-center justify-center w-16 h-12 transition-all ${(!showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) ? 'text-indigo-600 font-bold' : 'text-gray-500 hover:text-indigo-500'}`}
+        >
+          <div className={`relative mb-1 transition-transform ${(!showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) ? 'scale-110' : 'group-hover:scale-110'}`}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={(!showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) ? "2.5" : "2"} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {(!showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) && <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />}
+          </div>
+          <span className="text-[10px] tracking-wide">Map</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setShowListOnMobile(true);
+            setIsProfileModalOpen(false);
+            setIsSignInModalOpen(false);
+            setIsAboutModalOpen(false);
+          }}
+          className={`group flex flex-col items-center justify-center w-16 h-12 transition-all ${(showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) ? 'text-indigo-600 font-bold' : 'text-gray-500 hover:text-indigo-500'}`}
+        >
+          <div className={`relative mb-1 transition-transform ${(showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) ? 'scale-110' : 'group-hover:scale-110'}`}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={(showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) ? "2.5" : "2"} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            {(showListOnMobile && !isProfileModalOpen && !isSignInModalOpen && !isAboutModalOpen) && <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />}
+          </div>
+          <span className="text-[10px] tracking-wide">List</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setShowListOnMobile(false);
+            setIsAboutModalOpen(false);
+            if (user) {
+              setProfileInitialTab('stats');
+              setIsProfileModalOpen(true);
+            } else {
+              setIsSignInModalOpen(true);
+            }
+          }}
+          className={`group flex flex-col items-center justify-center w-16 h-12 transition-all ${(isProfileModalOpen || isSignInModalOpen) ? 'text-indigo-600 font-bold' : 'text-gray-500 hover:text-indigo-500'}`}
+        >
+          <div className={`relative mb-1 transition-transform ${(isProfileModalOpen || isSignInModalOpen) ? 'scale-110' : 'group-hover:scale-110'}`}>
+            {user ? (
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow-sm transition-all ${(isProfileModalOpen || isSignInModalOpen) ? 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md ring-2 ring-white' : 'bg-gray-400 ring-0 group-hover:bg-indigo-400'}`}>
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            )}
+            {(isProfileModalOpen || isSignInModalOpen) && <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />}
+          </div>
+          <span className="text-[10px] tracking-wide">{user ? 'Profile' : 'Sign In'}</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setShowListOnMobile(false);
+            setIsProfileModalOpen(false);
+            setIsSignInModalOpen(false);
+            setIsAboutModalOpen(true);
+          }}
+          className={`group flex flex-col items-center justify-center w-16 h-12 transition-all ${isAboutModalOpen ? 'text-indigo-600 font-bold' : 'text-gray-500 hover:text-indigo-500'}`}
+        >
+          <div className={`relative mb-1 transition-transform ${isAboutModalOpen ? 'scale-110' : 'group-hover:scale-110'}`}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isAboutModalOpen ? "2.5" : "2"} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {isAboutModalOpen && <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />}
+          </div>
+          <span className="text-[10px] tracking-wide">About</span>
+        </button>
+      </nav>
     </div >
   );
 

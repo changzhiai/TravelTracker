@@ -46,6 +46,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
         }
     };
 
+    const handleLogout = () => {
+        authService.logout();
+        localStorage.setItem('travel_tracker_logout_msg', 'true');
+        window.location.reload();
+    };
+
 
     useEffect(() => {
         if (isOpen && user) {
@@ -126,15 +132,24 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                 className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 transform transition-all overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex justify-between items-center p-6 border-b border-gray-100">
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <div className="flex justify-between items-center p-5 sm:p-6 border-b border-gray-100">
+                    <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                         My Profile
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <button 
+                            onClick={handleLogout} 
+                            className="lg:hidden text-[11px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 px-3 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                            Log Out
+                        </button>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex border-b border-gray-100">
