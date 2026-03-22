@@ -20,7 +20,7 @@ You can download the mobile app from the App Store and Google Play by scanning t
 
 
 
-## Features
+## ✨ Features
 
 - 🌍 **World Map View** - Track countries you've visited (~177 countries)
 - 🇺🇸 **USA Map View** - Track US states you've visited (50 states)
@@ -75,4 +75,4 @@ Some data may not be completely accurate. For example: there are generally recog
 
 ## 📧 Contact
 
-For questions, suggestions, or feedback, please contact: **changzhiai@gmail.com**
+For questions, suggestions, or feedback, please contact maintainer: **changzhiai@gmail.com**
