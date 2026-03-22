@@ -1,9 +1,18 @@
 import React from 'react';
 
 export const DeleteAccountInfo: React.FC = () => {
+    React.useEffect(() => {
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        return () => {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        };
+    }, []);
+
     return (
-        <div className="min-h-screen h-auto bg-gray-50 flex flex-col font-sans p-6 md:p-12 overflow-y-auto">
-            <div className="max-w-2xl mx-auto bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 my-auto">
+        <div className="min-h-screen w-full bg-gray-50 flex flex-col font-sans p-6 md:p-12 overflow-y-auto custom-scrollbar">
+            <div className="max-w-2xl mx-auto bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 my-8 sm:my-12">
                 <h1 className="text-3xl font-extrabold text-gray-900 mb-6 text-red-600">Request Account Deletion</h1>
 
                 <p className="text-gray-700 mb-6 text-lg leading-relaxed">

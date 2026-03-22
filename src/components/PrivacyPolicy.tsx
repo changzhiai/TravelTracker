@@ -1,9 +1,18 @@
 import React from 'react';
 
 export const PrivacyPolicy: React.FC = () => {
+    React.useEffect(() => {
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        return () => {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        };
+    }, []);
+
     return (
-        <div className="min-h-screen h-auto bg-gray-50 flex flex-col font-sans p-3 py-6 sm:p-6 md:p-12 overflow-y-auto">
-            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-5 sm:p-8 md:p-12 border border-gray-100 my-auto">
+        <div className="min-h-screen w-full bg-gray-50 flex flex-col font-sans p-3 py-6 sm:p-6 md:p-12 overflow-y-auto custom-scrollbar">
+            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-5 sm:p-8 md:p-12 border border-gray-100 my-8 sm:my-12">
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 sm:mb-6">Privacy Policy</h1>
                 <p className="text-gray-500 mb-6 sm:mb-8">Last updated: January 27, 2026</p>
 

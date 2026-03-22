@@ -3,7 +3,8 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
@@ -13,6 +14,8 @@
     height: 100%;
     width: 100%;
     margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   /* Mobile-specific viewport and safe area handling */
@@ -25,13 +28,11 @@
     body {
       min-height: -webkit-fill-available;
       min-height: 100dvh;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     #root {
       min-height: -webkit-fill-available;
       min-height: 100dvh;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
   }
 
@@ -247,5 +248,30 @@
   .px-safe {
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+  /* Custom scrollbar for standalone pages */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3); /* Indigo-light */
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  /* Support for Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
   }
 }

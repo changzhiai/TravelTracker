@@ -1,12 +1,22 @@
+import { useEffect } from "react";
 import QRCode from "react-qr-code";
 import logoImage from "../assets/logo_tt.png";
 
 export function DownloadApp() {
+  useEffect(() => {
+    document.documentElement.style.overflow = 'auto';
+    document.body.style.overflow = 'auto';
+    return () => {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    };
+  }, []);
+
   const iosLink = "https://apps.apple.com/il/app/travel-tracker-visited-maps/id6758506116"; 
   const androidLink = "https://play.google.com/store/apps/details?id=com.traveltracker.app";
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-indigo-50 via-purple-50 to-amber-50 flex flex-col items-center justify-center px-1 py-4 sm:p-8 font-sans overflow-x-hidden">
+    <div className="min-h-screen w-full bg-gradient-to-br from-indigo-50 via-purple-50 to-amber-50 flex flex-col items-center justify-start px-2 py-8 sm:p-12 font-sans overflow-y-auto overflow-x-hidden custom-scrollbar">
       
 
       <div className="w-full max-w-4xl bg-white/60 backdrop-blur-2xl border border-white max-lg:mt-6 rounded-[2rem] shadow-2xl p-4 sm:p-12 text-center md:container relative overflow-hidden">

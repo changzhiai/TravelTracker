@@ -9,9 +9,9 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pb-20 md:pb-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex justify-center p-4 pb-24 md:pb-4 bg-black/50 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
             <div
-                className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 transform transition-all overflow-hidden"
+                className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 transform transition-all overflow-hidden my-auto"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
@@ -114,7 +114,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             <img alt="" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
                         </form>
                     </div>
-                    
+
                     {/* Mobile Footer Links (only visible on small screens since main footer is hidden) */}
                     <div className="lg:hidden flex flex-wrap justify-center gap-x-4 gap-y-2 pt-4 border-t border-gray-100 text-xs text-gray-500 font-medium">
                         <a href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy</a>

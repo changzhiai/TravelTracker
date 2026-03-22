@@ -127,9 +127,9 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
     ];
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex justify-center p-4 pb-24 md:pb-4 bg-black/50 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
             <div
-                className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 transform transition-all overflow-hidden"
+                className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 transform transition-all overflow-hidden my-auto"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center p-5 sm:p-6 border-b border-gray-100">
@@ -137,8 +137,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateUser, activeLocati
                         My Profile
                     </h2>
                     <div className="flex items-center gap-3 sm:gap-4">
-                        <button 
-                            onClick={handleLogout} 
+                        <button
+                            onClick={handleLogout}
                             className="lg:hidden text-[11px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 px-3 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>

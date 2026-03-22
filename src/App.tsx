@@ -3612,7 +3612,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className={`flex flex-1 relative ${isMobile && isLandscape ? 'mx-1 md:mx-0 gap-2 md:gap-2' : 'mx-2 md:mx-0 md:gap-4 min-h-0 pb-15 lg:pb-0'}`}>
+      <div className={`flex flex-1 relative min-h-0 ${isMobile && isLandscape && window.innerHeight < 600 ? 'mx-1 md:mx-0 gap-2 md:gap-2' : 'mx-2 md:mx-0 md:gap-4 pb-[calc(3.8rem+env(safe-area-inset-bottom))] lg:pb-0'}`}>
         {/* Map Container */}
         <div className={`flex-grow flex flex-col ${isFullscreen ? 'relative' : `bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl ${isMobile && isLandscape ? 'px-4 py-2 pb-2' : 'px-4 py-2 sm:px-6 sm:py-2'} relative border border-white/20`}`}>
           <div className={`flex items-center ${isMobile && isLandscape ? 'mb-1 pb-1' : 'mb-1 sm:mb-2 border-b pb-1 sm:pb-2'} flex-wrap gap-2 sm:gap-3`}>
@@ -4169,7 +4169,7 @@ function App() {
       </footer>
 
       {/* Notification Container */}
-      <div id="notification-container" className={`fixed ${isMobile && !isLandscape ? 'bottom-15' : 'bottom-4'} left-4 z-[200] pb-safe pl-safe transition-all duration-300`}></div>
+      <div id="notification-container" className={`fixed ${isMobile && !isLandscape ? 'bottom-[calc(3.8rem+env(safe-area-inset-bottom))]' : 'bottom-4'} left-4 z-[200] pb-safe pl-safe transition-all duration-300`}></div>
 
       {/* Auth Modal */}
       <SignInModal
@@ -4207,7 +4207,7 @@ function App() {
       />
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 justify-around items-center pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-[150] shadow-[0_-8px_30px_-5px_rgba(0,0,0,0.1)] ${isMobile && isLandscape ? 'hidden' : 'flex lg:hidden'}`}>
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 justify-around items-center pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-[150] shadow-[0_-8px_30px_-5px_rgba(0,0,0,0.1)] ${isMobile && isLandscape && window.innerHeight < 600 ? 'hidden' : 'flex lg:hidden'}`}>
         <button
           onClick={() => {
             setShowListOnMobile(false);
