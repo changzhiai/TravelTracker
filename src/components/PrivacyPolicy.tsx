@@ -2,21 +2,16 @@ import React from 'react';
 
 export const PrivacyPolicy: React.FC = () => {
     React.useEffect(() => {
-        document.documentElement.style.overflow = 'auto';
-        document.body.style.overflow = 'auto';
-        return () => {
-            document.documentElement.style.overflow = 'hidden';
-            document.body.style.overflow = 'hidden';
-        };
+        // Scroll is now handled by the component container (h-screen overflow-y-auto)
     }, []);
 
     return (
-        <div className="min-h-screen w-full bg-gray-50 flex flex-col font-sans p-3 py-6 sm:p-6 md:p-12 overflow-y-auto custom-scrollbar">
+        <div className="h-screen w-full bg-gray-50 flex flex-col font-sans p-3 py-6 sm:p-6 md:p-12 overflow-y-auto custom-scrollbar">
             <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-5 sm:p-8 md:p-12 border border-gray-100 my-8 sm:my-12">
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 sm:mb-6">Privacy Policy</h1>
                 <p className="text-gray-500 mb-6 sm:mb-8">Last updated: January 27, 2026</p>
 
-                <div className="space-y-6 text-gray-700 leading-relaxed">
+                <div className="space-y-6 text-gray-700 leading-relaxed text-justify">
                     <section>
                         <h2 className="text-2xl font-bold text-gray-800 mb-3">1. Introduction</h2>
                         <p>
@@ -35,7 +30,7 @@ export const PrivacyPolicy: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-3">3. How We Use Your Information</h2>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-3">3. Your Information We Use</h2>
                         <p>We use your information strictly to:</p>
                         <ul className="list-disc pl-5 space-y-2 mt-2">
                             <li>Provide and manage your user account.</li>
@@ -71,7 +66,7 @@ export const PrivacyPolicy: React.FC = () => {
                     <section>
                         <h2 className="text-2xl font-bold text-gray-800 mb-3">7. Contact Us</h2>
                         <p>
-                            If you have questions or comments about this policy, you may contact us at:
+                            If you have questions, concerns, or comments about this policy, you may contact us at:
                             <a href="mailto:changzhiai@gmail.com" className="text-indigo-600 hover:underline"> changzhiai@gmail.com</a>
                         </p>
                     </section>

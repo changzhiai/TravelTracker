@@ -36,7 +36,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             </span>
                             About the App
                         </h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">
+                        <p className="text-gray-600 leading-relaxed text-sm text-justify">
                             Travel Tracker is your personal companion for visualizing your global adventures.
                             Track world countries, US states, European countries, Chinese provinces, Indian states, and US national parks that you've visited, view statistics, and share your travel map with the world.
                         </p>
@@ -52,7 +52,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             </span>
                             Contributions
                         </h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">
+                        <p className="text-gray-600 leading-relaxed text-sm text-justify">
                             This project is built with passion. Special thanks to the open-source community for the tools and libraries that made this possible. You are open to contribute ideas, bug reports, and feature requests to our <a href="https://github.com/changzhiai/TravelTracker" className="text-indigo-600 hover:text-indigo-800 font-medium">GitHub repository</a>.
                         </p>
                     </div>
@@ -67,7 +67,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             </span>
                             Contacts
                         </h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">
+                        <p className="text-gray-600 leading-relaxed text-sm text-justify">
                             Have questions, suggestions, or feedback? Feel free to reach out to us at <a href="mailto:changzhiai@gmail.com" className="text-indigo-600 hover:text-indigo-800 font-medium">changzhiai@gmail.com</a>.
                         </p>
                     </div>
@@ -82,7 +82,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             </span>
                             Donation
                         </h3>
-                        <p className="text-gray-600 leading-relaxed text-sm mb-4">
+                        <p className="text-gray-600 leading-relaxed text-sm mb-4 text-justify">
                             This is completely a free app. If you enjoy using Travel Tracker and would like to support its development, consider making a donation. Your support helps keep the servers running and new features coming! Thank you so much for your support!
                         </p>
                         <a
