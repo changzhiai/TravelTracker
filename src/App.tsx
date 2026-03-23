@@ -478,6 +478,20 @@ function App() {
     }, 3000);
   }, []);
 
+  const handleLoginSuccess = useCallback((username: string) => {
+    // Persist welcome message intent
+    localStorage.setItem('travel_tracker_welcome_user', username);
+    // Reload immediately to get a fresh state - avoids "double refresh" visual
+    window.location.reload();
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    authService.logout();
+    // Persist logout message intent
+    localStorage.setItem('travel_tracker_logout_msg', 'true');
+    window.location.reload();
+  }, []);
+
   // Auth Initialization
   useEffect(() => {
     const savedUser = authService.getCurrentUser();
@@ -500,6 +514,42 @@ function App() {
     }
   }, [showNotification]);
 
+  // Handle URL parameters (e.g. from Web Redirects or Social Login)
+  useEffect(() => {
+    const processUrlParams = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const appleIdToken = params.get('apple_id_token');
+      const appleUser = params.get('apple_user');
+      
+      if (appleIdToken) {
+        console.log('[Auth] Detected Apple login params in URL');
+        try {
+          setIsLoading(true);
+          const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
+          const result = await authService.appleLogin(appleIdToken, parsedUser);
+          
+          if (result.user) {
+            // Clean up URL visually
+            window.history.replaceState({}, '', window.location.pathname);
+            handleLoginSuccess(result.user.username);
+          } else {
+            // Show more detailed error if possible
+            const errorMsg = result.error || 'Apple login failed';
+            console.error('[Auth] Login failed:', errorMsg);
+            showNotification(errorMsg, 'error');
+          }
+        } catch (err) {
+          console.error('[Auth] Error processing query params:', err);
+          showNotification('Login processing error', 'error');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    processUrlParams();
+  }, [handleLoginSuccess, showNotification]);
+
   // Handle initial modal routing (e.g. /login, /register, /reset) on load
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
@@ -517,7 +567,9 @@ function App() {
           world: '/world', usa: '/usa', usaParks: '/usa-parks',
           europe: '/europe', china: '/china', india: '/india'
         };
-        window.history.replaceState({}, '', scopeMap[currentScope]);
+        // Preserve search parameters (like tokens) when cleaning up modal paths
+        const newPath = scopeMap[currentScope] + window.location.search;
+        window.history.replaceState({}, '', newPath);
       }
     }
   }, [currentScope]);
@@ -624,96 +676,7 @@ function App() {
     }
   }, [user, currentScope, activeLocations, allActiveLocations]);
 
-  const handleLoginSuccess = useCallback((username: string) => {
-    // Persist welcome message intent
-    localStorage.setItem('travel_tracker_welcome_user', username);
-    // Reload immediately to get a fresh state - avoids "double refresh" visual
-    window.location.reload();
-  }, []);
-
-  // Handle URL parameters (e.g. from Web Redirects or Social Login)
-  useEffect(() => {
-    const processUrlParams = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const appleIdToken = params.get('apple_id_token');
-      const appleUser = params.get('apple_user');
-      
-      if (appleIdToken) {
-        console.log('[Auth] Detected Apple login params in URL');
-        try {
-          setIsLoading(true);
-          const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
-          const result = await authService.appleLogin(appleIdToken, parsedUser);
-          
-          if (result.user) {
-            // Clean up URL visually
-            window.history.replaceState({}, '', window.location.pathname);
-            handleLoginSuccess(result.user.username);
-          } else {
-            showNotification(result.error || 'Apple login failed', 'error');
-          }
-        } catch (err) {
-          console.error('[Auth] Error processing query params:', err);
-          showNotification('Login processing error', 'error');
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    processUrlParams();
-  }, [handleLoginSuccess, showNotification]);
-
-  // Handle Deep Links (for Apple Sign-In on Android)
-  useEffect(() => {
-    if (Capacitor.getPlatform() === 'android') {
-      const setupListener = async () => {
-        await CapApp.addListener('appUrlOpen', async (data: any) => {
-          console.log('App opened with URL:', data.url);
-          const rawUrl = data.url;
-
-          // Use more robust matching for the custom scheme
-          if (rawUrl.includes('apple-callback')) {
-            const url = new URL(rawUrl);
-            const params = new URLSearchParams(url.search);
-            const idToken = params.get('apple_id_token');
-            const appleUser = params.get('apple_user');
-
-            if (idToken) {
-              try {
-                // Visual feedback
-                setIsLoading(true);
-                setIsSignInModalOpen(false);
-
-                const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
-                const result = await authService.appleLogin(idToken, parsedUser);
-
-                if (result.user) {
-                  handleLoginSuccess(result.user.username);
-                } else {
-                  showNotification(result.error || 'Verification failed', 'error');
-                }
-              } catch (err) {
-                console.error('Deep link login error:', err);
-                showNotification('Login processing error', 'error');
-              } finally {
-                setIsLoading(false);
-              }
-            }
-          }
-        });
-      };
-
-      setupListener();
-    }
-  }, [handleLoginSuccess, showNotification]);
-
-  const handleLogout = () => {
-    authService.logout();
-    // Persist logout message intent
-    localStorage.setItem('travel_tracker_logout_msg', 'true');
-    window.location.reload();
-  };
+  // Show location name notification
 
   // Show location name notification
   const showLocationName = useCallback((locationName: string) => {
