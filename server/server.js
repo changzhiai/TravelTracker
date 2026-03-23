@@ -294,6 +294,13 @@ app.post('/api/apple-login', async (req, res) => {
                 let firstName = appleUser?.name?.firstName || '';
                 let lastName = appleUser?.name?.lastName || '';
                 let fullName = [firstName, lastName].filter(Boolean).join(' ');
+                
+                // Ensure email is present
+                if (!email) {
+                    console.error('[Apple Auth] No email found in token. Verify scopes.');
+                    return res.status(401).json({ error: 'Email required for account creation' });
+                }
+                
                 let baseUsername = fullName || email.split('@')[0];
 
                 db.createUser(baseUsername, null, email, (err, userId) => {
@@ -330,15 +337,23 @@ app.post(['/api/apple-callback', '/api-callback', '/api/api-callback'], (req, re
     console.log(`[Apple Callback] Received request at ${req.url} with method ${req.method}`);
     console.log(`[Apple Callback] Body received: ${JSON.stringify(req.body)}`);
     const { id_token, code, user, state } = req.body;
-    
-    // New Strategy: Redirect directly back to the web version with parameters
-    // This works for both the web app and the mobile view in Chrome/Safari
+
+    // Detect if we are coming from a mobile app (based on state we sent during login setup)
+    const isFromApp = state && state.includes('platform:mobile');
+
     let queryParams = `?apple_id_token=${encodeURIComponent(id_token || '')}`;
     if (user) queryParams += `&apple_user=${encodeURIComponent(user)}`;
     if (state) queryParams += `&state=${encodeURIComponent(state)}`;
-    
-    console.log(`[Apple Callback] New Strategy: Redirecting to website with params.`);
-    res.redirect(`https://travel-tracker.org/${queryParams}`);
+
+    if (isFromApp) {
+        // Strategy: Redirect to custom scheme to bring user back to the native app
+        console.log(`[Apple Callback] App Strategy: Redirecting to custom scheme com.traveltracker.app://`);
+        res.redirect(`com.traveltracker.app://login${queryParams}`);
+    } else {
+        // Strategy: Redirect directly back to the web version with parameters
+        console.log(`[Apple Callback] Web Strategy: Redirecting to website with params.`);
+        res.redirect(`https://travel-tracker.org/${queryParams}`);
+    }
 });
 
 // Login

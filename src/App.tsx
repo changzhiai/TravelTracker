@@ -12,6 +12,7 @@ import { union } from '@turf/turf';
 import type { FeatureCollection, Feature } from 'geojson';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import logoImage from './assets/logo_tt.png';
@@ -513,41 +514,67 @@ function App() {
     }
   }, [showNotification]);
 
+  // Helper to process authentication parameters from URL or Deep Link
+  const processAuthParams = useCallback(async (queryString: string) => {
+    if (!queryString) return;
+
+    // Support both ?query and just query
+    if (queryString.startsWith('com.traveltracker.app') || queryString.startsWith('ttapp')) {
+      // It's a full URL, extract the query part
+      const split = queryString.split('?');
+      queryString = split.length > 1 ? '?' + split[1] : '';
+    }
+
+    const params = new URLSearchParams(queryString);
+    const appleIdToken = params.get('apple_id_token');
+    const appleUser = params.get('apple_user');
+
+    if (appleIdToken) {
+      console.log('[Auth] Detected Apple login params');
+      try {
+        setIsLoading(true);
+        const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
+        const result = await authService.appleLogin(appleIdToken, parsedUser);
+
+        if (result.user) {
+          // Clean up URL visually if on web
+          if (!Capacitor.isNativePlatform()) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+          handleLoginSuccess(result.user.username);
+        } else {
+          const errorMsg = result.error || 'Apple login failed';
+          console.error('[Auth] Login failed:', errorMsg);
+          showNotification(errorMsg, 'error');
+        }
+      } catch (err) {
+        console.error('[Auth] Error processing query params:', err);
+        showNotification('Login processing error', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [handleLoginSuccess, showNotification]);
+
   // Handle URL parameters (e.g. from Web Redirects or Social Login)
   useEffect(() => {
-    const processUrlParams = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const appleIdToken = params.get('apple_id_token');
-      const appleUser = params.get('apple_user');
-      
-      if (appleIdToken) {
-        console.log('[Auth] Detected Apple login params in URL');
-        try {
-          setIsLoading(true);
-          const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
-          const result = await authService.appleLogin(appleIdToken, parsedUser);
-          
-          if (result.user) {
-            // Clean up URL visually
-            window.history.replaceState({}, '', window.location.pathname);
-            handleLoginSuccess(result.user.username);
-          } else {
-            // Show more detailed error if possible
-            const errorMsg = result.error || 'Apple login failed';
-            console.error('[Auth] Login failed:', errorMsg);
-            showNotification(errorMsg, 'error');
-          }
-        } catch (err) {
-          console.error('[Auth] Error processing query params:', err);
-          showNotification('Login processing error', 'error');
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
+    // Initial check for current window URL (web version or initial app launch with URL)
+    processAuthParams(window.location.search);
 
-    processUrlParams();
-  }, [handleLoginSuccess, showNotification]);
+    // Listen for app being opened via custom scheme (Deep Link) - Native only
+    if (Capacitor.isNativePlatform()) {
+      const handleAppUrlOpen = (data: { url: string }) => {
+        console.log('[Auth] App opened via URL:', data.url);
+        processAuthParams(data.url);
+      };
+
+      const listenerRequest = CapApp.addListener('appUrlOpen', handleAppUrlOpen);
+
+      return () => {
+        listenerRequest.then(handler => handler.remove());
+      };
+    }
+  }, [processAuthParams]);
 
   // Handle initial modal routing (e.g. /login, /register, /reset) on load
   useEffect(() => {

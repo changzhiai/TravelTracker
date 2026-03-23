@@ -377,7 +377,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                                         clientId: import.meta.env.VITE_APPLE_CLIENT_ID || 'com.travel-tracker.client',
                                         scope: 'email name',
                                         redirectURI: import.meta.env.VITE_APPLE_REDIRECT_URI || 'https://travel-tracker.org/api/apple-callback',
-                                        state: 'origin:web',
+                                        state: Capacitor.isNativePlatform() ? 'platform:mobile' : 'origin:web',
                                         nonce: 'nonce',
                                         usePopup: !Capacitor.isNativePlatform(),
                                     }}
@@ -405,7 +405,8 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                                         <button
                                             {...props}
                                             onClick={(e) => {
-                                                if (Capacitor.isNativePlatform()) {
+                                                // Native logic only for iOS
+                                                if (Capacitor.getPlatform() === 'ios') {
                                                     e.preventDefault();
                                                     handleAppleLogin();
                                                 } else {
