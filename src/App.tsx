@@ -14,7 +14,6 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
-import { App as CapApp } from '@capacitor/app';
 import logoImage from './assets/logo_tt.png';
 
 import './App.css';
