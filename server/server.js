@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 // Serve static files from the Vite build directory
@@ -322,6 +323,57 @@ app.post('/api/apple-login', async (req, res) => {
         console.error('Apple verification error:', error);
         res.status(401).json({ error: 'Invalid Apple token' });
     }
+});
+
+// Apple Callback (Redirect URI) - Matches MapParser strategy
+app.post(['/api/apple-callback', '/api-callback', '/api/api-callback'], (req, res) => {
+    console.log(`[Apple Callback] Received request at ${req.url} with method ${req.method}`);
+    console.log(`[Apple Callback] Body received: ${JSON.stringify(req.body)}`);
+    const { id_token, code, user, state } = req.body;
+    
+    // Check if we should redirect back to the app (mobile)
+    const isMobile = state && (state.startsWith('platform:mobile') || state.includes('platform:mobile'));
+    
+    if (isMobile) {
+        // Construct the custom app URL. Android uses 'com.traveltracker.app' as the scheme.
+        let queryParams = `?apple_id_token=${encodeURIComponent(id_token || '')}`;
+        if (user) queryParams += `&apple_user=${encodeURIComponent(user)}`;
+        if (state) queryParams += `&state=${encodeURIComponent(state)}`;
+        
+        const appUrl = `com.traveltracker.app://apple-callback${queryParams}`;
+        console.log(`Mobile detected. Redirecting to app: ${appUrl}`);
+
+        // Bridge Page to ensure Android Chrome handles the redirect reliably
+        return res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Redirecting to Travel Tracker...</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fafafa; color: #333; text-align: center; padding: 20px; }
+                    .loader { border: 3px solid #f3f3f3; border-top: 3px solid #4f46e5; border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; margin-bottom: 24px; }
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    .btn { color: white; background: #6366f1; text-decoration: none; margin-top: 30px; padding: 14px 28px; border-radius: 12px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+                    p { color: #666; margin-bottom: 0; }
+                </style>
+            </head>
+            <body>
+                <div class="loader"></div>
+                <h2>Almost there!</h2>
+                <p>Returning you to the Travel Tracker app...</p>
+                <a href="${appUrl}" class="btn">Open App</a>
+                <script>
+                    window.location.href = "${appUrl}";
+                    setTimeout(() => { window.location.href = "${appUrl}"; }, 1000);
+                </script>
+            </body>
+            </html>
+        `);
+    }
+
+    // Default web fallback (if not mobile)
+    res.send('Success! You can close this window.');
 });
 
 // Login

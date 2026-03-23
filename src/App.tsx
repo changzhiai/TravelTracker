@@ -630,6 +630,47 @@ function App() {
     window.location.reload();
   };
 
+  // Handle Deep Links (for Apple Sign-In on Android)
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        App.addListener('appUrlOpen', async (data: any) => {
+          console.log('App opened with URL:', data.url);
+          const url = new URL(data.url);
+          
+          // Handle Apple Login Redirect
+          if (url.hostname === 'apple-callback' || url.pathname.includes('apple-callback')) {
+            const params = new URLSearchParams(url.search);
+            const idToken = params.get('apple_id_token');
+            const appleUser = params.get('apple_user');
+            
+            if (idToken) {
+              try {
+                // Clear any existing modals
+                setIsSignInModalOpen(false);
+                setIsLoading(true);
+                
+                const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
+                const result = await authService.appleLogin(idToken, parsedUser);
+                
+                if (result.user) {
+                  handleLoginSuccess(result.user.username);
+                } else {
+                  showNotification(result.error || 'Apple login failed', 'error');
+                }
+              } catch (err) {
+                console.error('Deep link login error:', err);
+                showNotification('Failed to process Apple login', 'error');
+              } finally {
+                setIsLoading(false);
+              }
+            }
+          }
+        });
+      });
+    }
+  }, [handleLoginSuccess, showNotification]);
+
   const handleLogout = () => {
     authService.logout();
     // Persist logout message intent
