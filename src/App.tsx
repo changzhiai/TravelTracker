@@ -14,6 +14,7 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
+import { App as CapApp } from '@capacitor/app';
 import logoImage from './assets/logo_tt.png';
 
 import './App.css';
@@ -623,51 +624,87 @@ function App() {
     }
   }, [user, currentScope, activeLocations, allActiveLocations]);
 
-  const handleLoginSuccess = (username: string) => {
+  const handleLoginSuccess = useCallback((username: string) => {
     // Persist welcome message intent
     localStorage.setItem('travel_tracker_welcome_user', username);
     // Reload immediately to get a fresh state - avoids "double refresh" visual
     window.location.reload();
-  };
+  }, []);
+
+  // Handle URL parameters (e.g. from Web Redirects or Social Login)
+  useEffect(() => {
+    const processUrlParams = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const appleIdToken = params.get('apple_id_token');
+      const appleUser = params.get('apple_user');
+      
+      if (appleIdToken) {
+        console.log('[Auth] Detected Apple login params in URL');
+        try {
+          setIsLoading(true);
+          const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
+          const result = await authService.appleLogin(appleIdToken, parsedUser);
+          
+          if (result.user) {
+            // Clean up URL visually
+            window.history.replaceState({}, '', window.location.pathname);
+            handleLoginSuccess(result.user.username);
+          } else {
+            showNotification(result.error || 'Apple login failed', 'error');
+          }
+        } catch (err) {
+          console.error('[Auth] Error processing query params:', err);
+          showNotification('Login processing error', 'error');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    processUrlParams();
+  }, [handleLoginSuccess, showNotification]);
 
   // Handle Deep Links (for Apple Sign-In on Android)
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      import('@capacitor/app').then(({ App }) => {
-        App.addListener('appUrlOpen', async (data: any) => {
+    if (Capacitor.getPlatform() === 'android') {
+      const setupListener = async () => {
+        await CapApp.addListener('appUrlOpen', async (data: any) => {
           console.log('App opened with URL:', data.url);
-          const url = new URL(data.url);
-          
-          // Handle Apple Login Redirect
-          if (url.hostname === 'apple-callback' || url.pathname.includes('apple-callback')) {
+          const rawUrl = data.url;
+
+          // Use more robust matching for the custom scheme
+          if (rawUrl.includes('apple-callback')) {
+            const url = new URL(rawUrl);
             const params = new URLSearchParams(url.search);
             const idToken = params.get('apple_id_token');
             const appleUser = params.get('apple_user');
-            
+
             if (idToken) {
               try {
-                // Clear any existing modals
-                setIsSignInModalOpen(false);
+                // Visual feedback
                 setIsLoading(true);
-                
+                setIsSignInModalOpen(false);
+
                 const parsedUser = appleUser ? JSON.parse(decodeURIComponent(appleUser)) : undefined;
                 const result = await authService.appleLogin(idToken, parsedUser);
-                
+
                 if (result.user) {
                   handleLoginSuccess(result.user.username);
                 } else {
-                  showNotification(result.error || 'Apple login failed', 'error');
+                  showNotification(result.error || 'Verification failed', 'error');
                 }
               } catch (err) {
                 console.error('Deep link login error:', err);
-                showNotification('Failed to process Apple login', 'error');
+                showNotification('Login processing error', 'error');
               } finally {
                 setIsLoading(false);
               }
             }
           }
         });
-      });
+      };
+
+      setupListener();
     }
   }, [handleLoginSuccess, showNotification]);
 

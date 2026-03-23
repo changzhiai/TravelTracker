@@ -331,55 +331,14 @@ app.post(['/api/apple-callback', '/api-callback', '/api/api-callback'], (req, re
     console.log(`[Apple Callback] Body received: ${JSON.stringify(req.body)}`);
     const { id_token, code, user, state } = req.body;
     
-    // Detect if we should redirect back to the app (mobile)
-    // We check both the 'state' parameter and the User-Agent as a backup
-    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
-    const isMobileUA = userAgent.includes('android') || userAgent.includes('iphone') || userAgent.includes('ipad');
-    const isMobileState = state && (state.startsWith('platform:mobile') || state.includes('platform:mobile'));
+    // New Strategy: Redirect directly back to the web version with parameters
+    // This works for both the web app and the mobile view in Chrome/Safari
+    let queryParams = `?apple_id_token=${encodeURIComponent(id_token || '')}`;
+    if (user) queryParams += `&apple_user=${encodeURIComponent(user)}`;
+    if (state) queryParams += `&state=${encodeURIComponent(state)}`;
     
-    const isMobile = isMobileState || isMobileUA;
-    console.log(`[Apple Callback] Detection - isMobileState: ${isMobileState}, isMobileUA: ${isMobileUA}, State: ${state}`);
-    
-    if (isMobile) {
-        // Construct the custom app URL. Android uses 'com.traveltracker.app' as the scheme.
-        let queryParams = `?apple_id_token=${encodeURIComponent(id_token || '')}`;
-        if (user) queryParams += `&apple_user=${encodeURIComponent(user)}`;
-        if (state) queryParams += `&state=${encodeURIComponent(state)}`;
-        
-        const appUrl = `com.traveltracker.app://apple-callback${queryParams}`;
-        console.log(`Mobile detected. Redirecting to app: ${appUrl}`);
-
-        // Bridge Page to ensure Android Chrome handles the redirect reliably
-        return res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Redirecting to Travel Tracker...</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    body { font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fafafa; color: #333; text-align: center; padding: 20px; }
-                    .loader { border: 3px solid #f3f3f3; border-top: 3px solid #4f46e5; border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; margin-bottom: 24px; }
-                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    .btn { color: white; background: #6366f1; text-decoration: none; margin-top: 30px; padding: 14px 28px; border-radius: 12px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-                    p { color: #666; margin-bottom: 0; }
-                </style>
-            </head>
-            <body>
-                <div class="loader"></div>
-                <h2>Almost there!</h2>
-                <p>Returning you to the Travel Tracker app...</p>
-                <a href="${appUrl}" class="btn">Open App</a>
-                <script>
-                    window.location.href = "${appUrl}";
-                    setTimeout(() => { window.location.href = "${appUrl}"; }, 1000);
-                </script>
-            </body>
-            </html>
-        `);
-    }
-
-    // Default web fallback (if not mobile)
-    res.send('Success! You can close this window.');
+    console.log(`[Apple Callback] New Strategy: Redirecting to website with params.`);
+    res.redirect(`https://travel-tracker.org/${queryParams}`);
 });
 
 // Login
