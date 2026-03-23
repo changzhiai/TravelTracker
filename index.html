@@ -47,19 +47,53 @@
       "description": "Visualise your travel journey with Travel Tracker. Track countries, US states, Europe countries, China provinces, India states, and US national parks you have visited on an interactive map."
     }
   </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Travel Tracker",
+      "operatingSystem": "iOS, Android",
+      "applicationCategory": "TravelApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "installUrl": "https://travel-tracker.org/download"
+    }
+  </script>
 </head>
 
 <body>
-  <!-- Visually hidden links for SEO map region discovery -->
-  <nav aria-label="Map Regions"
+  <!-- Visually hidden links for SEO map region discovery and App Store indexing -->
+  <nav aria-label="Main Navigation"
     style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;">
+    <h2>Travel Tracker | Track Your Visited Countries and Maps</h2>
+    <p>Visualise your travel journey with our interactive maps. Track countries, US states, European countries, Chinese
+      provinces, Indian states, and US national parks.</p>
+
+    <h3>Mobile Application</h3>
+    <p>Download the Travel Tracker app for iOS and Android to track your travels offline and on-the-go.</p>
     <ul>
-      <li><a href="/world">World Map</a></li>
-      <li><a href="/usa">USA Map</a></li>
-      <li><a href="/usa-parks">USA National Parks Map</a></li>
-      <li><a href="/europe">Europe Map</a></li>
-      <li><a href="/china">China Map</a></li>
-      <li><a href="/india">India Map</a></li>
+      <li><a href="/download">Download Travel Tracker App</a></li>
+      <li><a href="/app">Get the Mobile App</a></li>
+      <li><a href="https://apps.apple.com/il/app/travel-tracker-visited-maps/id6758506116">Download on Apple App
+          Store</a></li>
+      <li><a href="https://play.google.com/store/apps/details?id=com.traveltracker.app">Get it on Google Play</a></li>
+    </ul>
+
+    <h3>Interactive Maps</h3>
+    <ul>
+      <li><a href="/world">World Map Tracker</a></li>
+      <li><a href="/usa">USA State Tracker</a></li>
+      <li><a href="/usa-parks">USA National Parks Tracker</a></li>
+      <li><a href="/europe">Europe Country Tracker</a></li>
+      <li><a href="/china">China Province Tracker</a></li>
+      <li><a href="/india">India State Tracker</a></li>
+    </ul>
+
+    <h3>Account & Support</h3>
+    <ul>
       <li><a href="/privacy">Privacy Policy</a></li>
       <li><a href="/about">About</a></li>
       <li><a href="/delete-account">Delete Account</a></li>
