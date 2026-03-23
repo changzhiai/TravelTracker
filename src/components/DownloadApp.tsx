@@ -4,16 +4,55 @@ import logoImage from "../assets/logo_tt.png";
 
 export function DownloadApp() {
   useEffect(() => {
-    // Enable scroll while this component is mounted
-    const originalOverflow = document.body.style.overflow;
-    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const root = document.getElementById('root');
+    const originalBodyStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      height: document.body.style.height,
+      overscrollBehavior: document.body.style.overscrollBehavior
+    };
     
+    const originalHtmlStyles = {
+      overflow: document.documentElement.style.overflow,
+      height: document.documentElement.style.height,
+      overscrollBehavior: document.documentElement.style.overscrollBehavior
+    };
+
+    const originalRootStyles = {
+      height: root?.style.height,
+      overflow: root?.style.overflow
+    };
+    
+    // Enable scrolling
     document.body.style.overflow = 'auto';
+    document.body.style.position = 'static';
+    document.body.style.height = 'auto';
+    document.body.style.overscrollBehavior = 'auto';
+    
     document.documentElement.style.overflow = 'auto';
+    document.documentElement.style.height = 'auto';
+    document.documentElement.style.overscrollBehavior = 'auto';
+
+    if (root) {
+      root.style.height = 'auto';
+      root.style.overflow = 'auto';
+    }
     
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.documentElement.style.overflow = originalHtmlOverflow;
+      // Restore global app-mode styles
+      document.body.style.overflow = originalBodyStyles.overflow;
+      document.body.style.position = originalBodyStyles.position;
+      document.body.style.height = originalBodyStyles.height;
+      document.body.style.overscrollBehavior = originalBodyStyles.overscrollBehavior;
+      
+      document.documentElement.style.overflow = originalHtmlStyles.overflow;
+      document.documentElement.style.height = originalHtmlStyles.height;
+      document.documentElement.style.overscrollBehavior = originalHtmlStyles.overscrollBehavior;
+
+      if (root) {
+        root.style.height = originalRootStyles.height || '';
+        root.style.overflow = originalRootStyles.overflow || '';
+      }
     };
   }, []);
 
