@@ -2582,7 +2582,7 @@ function App() {
     const checkResponsive = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      
+
       // Check orientation
       const landscape = width > height;
       setIsLandscape(landscape);

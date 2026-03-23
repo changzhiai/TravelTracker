@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { authService } from '../services/auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import AppleSignin from 'react-apple-signin-auth';
+import { Capacitor } from '@capacitor/core';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 
 interface SignInModalProps {
     isOpen: boolean;
@@ -54,6 +56,92 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
             setError('Google Login Failed');
         },
     });
+
+    const handleGoogleLogin = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                // Initialize the plugin with the correct client IDs for native apps
+                await SocialLogin.initialize({
+                    google: {
+                        webClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                        iOSClientId: import.meta.env.VITE_IOS_GOOGLE_CLIENT_ID,
+                    },
+                    apple: {
+                        clientId: Capacitor.getPlatform() === 'ios' ? import.meta.env.VITE_IOS_APPLE_CLIENT_ID : import.meta.env.VITE_APPLE_CLIENT_ID,
+                        useBroadcastChannel: false,
+                        redirectUrl: Capacitor.getPlatform() === 'ios' ? '' : import.meta.env.VITE_APPLE_REDIRECT_URI
+                    }
+                });
+
+                const response = await SocialLogin.login({
+                    provider: 'google',
+                    options: {}
+                });
+
+                console.log('Native Google login response:', response);
+                const token = (response.result as any).idToken;
+
+                if (token) {
+                    const result = await authService.googleLogin(token, false);
+                    if (result.user) {
+                        onLoginSuccess(result.user.username);
+                        resetForm();
+                    } else {
+                        setError(result.error || 'Google login failed on server');
+                    }
+                } else {
+                    setError('Google Login failed: No ID Token');
+                }
+            } catch (error) {
+                console.error('Native Google Login Error:', error);
+                setError(`Google Login Failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        } else {
+            loginWithGoogle();
+        }
+    };
+
+    const handleAppleLogin = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await SocialLogin.initialize({
+                    apple: {
+                        clientId: Capacitor.getPlatform() === 'ios' ? import.meta.env.VITE_IOS_APPLE_CLIENT_ID : import.meta.env.VITE_APPLE_CLIENT_ID,
+                        useBroadcastChannel: false,
+                        redirectUrl: Capacitor.getPlatform() === 'ios' ? '' : import.meta.env.VITE_APPLE_REDIRECT_URI
+                    },
+                    google: {
+                        webClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                        iOSClientId: import.meta.env.VITE_IOS_GOOGLE_CLIENT_ID,
+                    }
+                });
+                const response = await SocialLogin.login({
+                    provider: 'apple',
+                    options: {
+                        state: 'platform:mobile'
+                    }
+                });
+
+                console.log('Native Apple login response:', response);
+                const token = (response.result as any).idToken;
+
+                if (token) {
+                    const result = await authService.appleLogin(token, (response.result as any).user);
+                    if (result.user) {
+                        onLoginSuccess(result.user.username);
+                        resetForm();
+                    } else {
+                        setError(result.error || 'Apple login failed on server');
+                    }
+                } else {
+                    setError('Apple Login failed: No ID Token');
+                }
+            } catch (error) {
+                console.error('Native Apple Login Error:', error);
+                setError(`Apple Login Failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -268,8 +356,9 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                         <div className="flex flex-col gap-3">
                             <div className="flex justify-center flex-1">
                                 <button
-                                    onClick={() => loginWithGoogle()}
-                                    className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-[#747775] rounded-full hover:bg-gray-50 transition-all font-medium text-[#1f1f1f] text-sm"
+                                    type="button"
+                                    onClick={handleGoogleLogin}
+                                    className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-[#747775] rounded-full hover:bg-gray-50 transition-all font-medium text-[#1f1f1f] text-sm transform active:scale-95"
                                     style={{ height: '40px', width: '270px' }}
                                 >
                                     <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -290,7 +379,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                                         redirectURI: import.meta.env.VITE_APPLE_REDIRECT_URI || 'https://travel-tracker.org/api/apple-callback',
                                         state: 'origin:web',
                                         nonce: 'nonce',
-                                        usePopup: true,
+                                        usePopup: !Capacitor.isNativePlatform(),
                                     }}
                                     uiType="light"
                                     onSuccess={async (response: any) => {
@@ -315,7 +404,15 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                                     render={(props: any) => (
                                         <button
                                             {...props}
-                                            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[#747775] rounded-full hover:bg-gray-50 transition-all font-medium text-[#1f1f1f] text-sm"
+                                            onClick={(e) => {
+                                                if (Capacitor.isNativePlatform()) {
+                                                    e.preventDefault();
+                                                    handleAppleLogin();
+                                                } else {
+                                                    props.onClick(e);
+                                                }
+                                            }}
+                                            className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-[#747775] rounded-full hover:bg-gray-50 transition-all font-medium text-[#1f1f1f] text-sm transform active:scale-95"
                                             style={{ height: '40px', width: '270px' }}
                                         >
                                             <svg className="w-4 h-4" viewBox="0 0 170 170" fill="currentColor">
