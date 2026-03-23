@@ -19,10 +19,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dist')));
 
 
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-console.log('Google Auth initialized with Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Loaded' : 'MISSING');
+const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+console.log('Google Auth initialized with Client ID:', process.env.VITE_GOOGLE_CLIENT_ID ? 'Loaded' : 'MISSING');
 
 // Email Transporter
 // Supports Gmail, Outlook (Hotmail), etc. via standard services or SMTP
@@ -210,7 +210,7 @@ app.post('/api/google-login', async (req, res) => {
             console.log('Verifying Google ID token...');
             const ticket = await googleClient.verifyIdToken({
                 idToken: token,
-                audience: process.env.GOOGLE_CLIENT_ID
+                audience: [process.env.VITE_GOOGLE_CLIENT_ID, process.env.VITE_IOS_GOOGLE_CLIENT_ID].filter(Boolean)
             });
             const payload = ticket.getPayload();
             email = payload.email;
@@ -270,8 +270,8 @@ app.post('/api/apple-login', async (req, res) => {
 
     try {
         const { sub: appleId, email } = await appleSignin.verifyIdToken(token, {
-            // Verify the audience (Service ID)
-            audience: process.env.APPLE_CLIENT_ID,
+            // Verify the audience (Service ID or Bundle ID)
+            audience: [process.env.VITE_APPLE_CLIENT_ID, process.env.VITE_IOS_APPLE_CLIENT_ID].filter(Boolean),
             ignoreExpiration: false,
         });
 
