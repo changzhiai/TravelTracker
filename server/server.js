@@ -331,8 +331,14 @@ app.post(['/api/apple-callback', '/api-callback', '/api/api-callback'], (req, re
     console.log(`[Apple Callback] Body received: ${JSON.stringify(req.body)}`);
     const { id_token, code, user, state } = req.body;
     
-    // Check if we should redirect back to the app (mobile)
-    const isMobile = state && (state.startsWith('platform:mobile') || state.includes('platform:mobile'));
+    // Detect if we should redirect back to the app (mobile)
+    // We check both the 'state' parameter and the User-Agent as a backup
+    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+    const isMobileUA = userAgent.includes('android') || userAgent.includes('iphone') || userAgent.includes('ipad');
+    const isMobileState = state && (state.startsWith('platform:mobile') || state.includes('platform:mobile'));
+    
+    const isMobile = isMobileState || isMobileUA;
+    console.log(`[Apple Callback] Detection - isMobileState: ${isMobileState}, isMobileUA: ${isMobileUA}, State: ${state}`);
     
     if (isMobile) {
         // Construct the custom app URL. Android uses 'com.traveltracker.app' as the scheme.
