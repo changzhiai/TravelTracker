@@ -2,11 +2,21 @@ import React from 'react';
 
 export const PrivacyPolicy: React.FC = () => {
     React.useEffect(() => {
-        // Scroll is now handled by the component container (h-screen overflow-y-auto)
+        // Enable scroll while this component is mounted
+        const originalOverflow = document.body.style.overflow;
+        const originalHtmlOverflow = document.documentElement.style.overflow;
+        
+        document.body.style.overflow = 'auto';
+        document.documentElement.style.overflow = 'auto';
+        
+        return () => {
+            document.body.style.overflow = originalOverflow;
+            document.documentElement.style.overflow = originalHtmlOverflow;
+        };
     }, []);
 
     return (
-        <div className="h-screen w-full bg-gray-50 flex flex-col font-sans p-3 py-6 sm:p-6 md:p-12 overflow-y-auto custom-scrollbar">
+        <div className="min-h-screen w-full bg-gray-50 flex flex-col font-sans p-3 py-6 sm:p-6 md:p-12 overflow-x-hidden">
             <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-5 sm:p-8 md:p-12 border border-gray-100 my-8 sm:my-12">
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 sm:mb-6">Privacy Policy</h1>
                 <p className="text-gray-500 mb-6 sm:mb-8">Last updated: January 27, 2026</p>
