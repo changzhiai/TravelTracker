@@ -187,8 +187,14 @@ function App() {
   const scopeDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Responsive state
-  const [isLandscape, setIsLandscape] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
+  const [isMobile, setIsMobile] = useState('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(() => {
+    const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const landscape = window.innerWidth > window.innerHeight;
+    const bottomNavHidden = (mobile && landscape && window.innerHeight < 600) || window.innerWidth >= 1024;
+    return !bottomNavHidden;
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Computed values
@@ -2574,13 +2580,21 @@ function App() {
   // Handle orientation and mobile checks
   useEffect(() => {
     const checkResponsive = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
       // Check orientation
-      const landscape = window.innerWidth > window.innerHeight;
+      const landscape = width > height;
       setIsLandscape(landscape);
 
       // Check if mobile (touch)
       const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       setIsMobile(mobile);
+
+      // Determine if bottom navigation bar is visible
+      // It's hidden on large screens (lg:hidden) OR on small landscape mobile screens
+      const bottomNavHidden = (mobile && landscape && height < 600) || width >= 1024;
+      setIsBottomNavVisible(!bottomNavHidden);
     };
 
     const handleFullScreenChange = () => {
@@ -3501,8 +3515,8 @@ function App() {
             <span className="text-indigo-700 font-semibold">{totalTypeLabel.replace('%', '')}</span>
           </div>
 
-          {/* Auth Section */}
-          <div className={`${(!isMobile || (isMobile && isLandscape)) ? 'flex' : 'hidden'} items-center border-l border-gray-200 ${isMobile && isLandscape ? 'pl-1 ml-0.5' : 'pl-2 sm:pl-4 ml-1 sm:ml-2'}`}>
+          {/* Auth Section - Only show on top if bottom nav is hidden */}
+          <div className={`${!isBottomNavVisible ? 'flex' : 'hidden'} items-center border-l border-gray-200 ${isMobile && isLandscape ? 'pl-1 ml-0.5' : 'pl-2 sm:pl-4 ml-1 sm:ml-2'}`}>
             {user ? (
               <div className="relative group">
                 <button
@@ -4207,7 +4221,7 @@ function App() {
       />
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 justify-around items-center pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-[150] shadow-[0_-8px_30px_-5px_rgba(0,0,0,0.1)] ${isMobile && isLandscape && window.innerHeight < 600 ? 'hidden' : 'flex lg:hidden'}`}>
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 justify-around items-center pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-[150] shadow-[0_-8px_30px_-5px_rgba(0,0,0,0.1)] ${isBottomNavVisible ? 'flex lg:hidden' : 'hidden'}`}>
         <button
           onClick={() => {
             setShowListOnMobile(false);
