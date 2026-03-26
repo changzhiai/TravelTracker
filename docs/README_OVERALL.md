@@ -165,6 +165,9 @@ This project is configured for GitHub Pages deployment.
 
 Some data may not be completely accurate. For example: there are generally recognized to be **195 countries** in the world (193 UN member states + 2 observer states), but this application includes **~176 countries/territories** based on the Natural Earth dataset used. The map data is sourced from publicly available GeoJSON/TopoJSON datasets, and the exact count may vary depending on the data source and how territories are classified. This is common across different mapping applications and datasets.
 
+## Keywords
+
+Travel-Tracker, visited map, map, world countries, US states, China provinces, India states, US NPs
 
 ## 📧 Contact
 
