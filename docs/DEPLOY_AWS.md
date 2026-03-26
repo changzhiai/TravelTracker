@@ -57,9 +57,9 @@ We have provided a setup script to automate the installation.
 
 ## Step 4: Deploy the Application
 
-1.  **Clone your repository** (replace with your repo URL):
+1.  **Clone your repository**:
     ```bash
-    git clone https://github.com/YOUR_USERNAME/travel-tracker.git
+    git clone https://github.com/changzhiai/travel-tracker.git
     cd travel-tracker
     ```
 
@@ -79,7 +79,65 @@ We have provided a setup script to automate the installation.
     npm run build
     ```
 
-4.  **Start the Server**:
+4.  **Nginx and SSL Setup**:
+
+    Follow the instructions in [Nginx and SSL Setup](docs/DEPLOY_DOMAIN.md).
+
+    ```bash
+    # Install Nginx
+    sudo apt install nginx -y
+
+    # Configure Nginx
+    sudo nano /etc/nginx/sites-available/travel-tracker
+    ```
+
+    Final configuration:
+    ```nginx
+    server {
+        server_name travel-tracker.org www.travel-tracker.org;
+
+        location / {
+            proxy_pass http://localhost:3001;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        listen 443 ssl; # managed by Certbot
+        ssl_certificate /etc/letsencrypt/live/travel-tracker.org/fullchain.pem; # managed by Certbot
+        ssl_certificate_key /etc/letsencrypt/live/travel-tracker.org/privkey.pem; # managed by Certbot
+        include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+    }
+    server {
+        if ($host = www.travel-tracker.org) {
+            return 301 https://$host$request_uri;
+        } # managed by Certbot
+
+
+        if ($host = travel-tracker.org) {
+            return 301 https://$host$request_uri;
+        } # managed by Certbot
+
+
+        listen 80;
+        server_name travel-tracker.org www.travel-tracker.org;
+        return 404; # managed by Certbot
+    }
+    ```
+
+    Enable the site:
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/travel-tracker /etc/nginx/sites-enabled/
+    sudo nginx -t
+    sudo systemctl reload nginx
+    ```
+
+5.  **Start the Server**:
     ```bash
     # Start with PM2 to keep it running in background
     pm2 start npm --name "travel-tracker" -- run start
@@ -103,7 +161,7 @@ Open your browser and visit:
 
 ---
 
-## Deployment Updates
+## Step 6: Updates
 
 When you make changes to your code:
 
@@ -128,3 +186,42 @@ If you prefer using Docker, a `Dockerfile` is included in the project root.
 2.  Run container: `docker run -p 3001:3001 -d travel-tracker`
 
 *Note: With Docker, the SQLite database inside the container will reset if the container is removed, unless you mount a volume.*
+
+# Updating the Deployment
+
+Follow these steps to update the application on the production server.
+
+## 1. Connect to the Server
+
+SSH into your AWS EC2 instance:
+```bash
+ssh -i bin/traveltracker-key.pem ubuntu@54.151.8.244
+```
+
+## 2. Navigate to Project Directory
+
+```bash
+cd travel-tracker
+```
+
+## 3. Pull Latest Changes
+
+Pull the latest changes from the `dev` branch:
+```bash
+git pull origin dev
+```
+
+## 4. Rebuild the Application
+
+Install any new dependencies and rebuild the frontend:
+```bash
+npm install
+npm run build
+```
+
+## 5. Restart the Server
+
+Restart the PM2 process to apply changes:
+```bash
+pm2 restart travel-tracker
+```

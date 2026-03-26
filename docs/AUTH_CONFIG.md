@@ -33,6 +33,25 @@ Google login is implemented using OAuth 2.0.
     - Update your root `.env` file: `VITE_GOOGLE_CLIENT_ID=your-client-id`.
     - Update your `server/.env` file: `GOOGLE_CLIENT_ID=your-client-id`.
 
+## 2. Troubleshooting Release Issues
+
+### Google Sign-In Fails in Release Build
+If Google Sign-In works in your simulator but fails after releasing the app, it is likely due to a **SHA-1 Fingerprint Mismatch**.
+
+1.  **Release SHA-1**: Get the SHA-1 of your production keystore:
+    ```bash
+    keytool -list -v -keystore /path/to/your/release-key.jks -alias your_alias_name
+    ```
+2.  **Google Play SHA-1**: If you are using "Google Play App Signing" (recommended), you must also add the SHA-1 provided by Google. Go to the **Google Play Console** > **Setup** > **App Integrity** and copy the **SHA-1 certificate fingerprint** from the "App signing certificate" section.
+3.  **Update Google Cloud Console**:
+    *   Go to the [Google Cloud Console](https://console.cloud.google.com/).
+    *   Navigate to **APIs & Services** > **Credentials**.
+    *   Find the **OAuth 2.0 Client ID** that corresponds to your Android app (or create a new one).
+    *   Add **both** SHA-1 fingerprints (Release and Play Store) to the allowed certificate fingerprints.
+4.  **Support Email**: Ensure a "Support email" is configured in the **OAuth consent screen** settings. Google Sign-In will fail if this is empty.
+5.  **OAuth Consent Screen**: Ensure your project is set to **"Production"** status (not "Testing"), or ensure your production users are added as test users.
+
+
 ---
 
 ## 2. Apple Login Configuration
