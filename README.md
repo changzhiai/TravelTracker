@@ -68,6 +68,15 @@ You can download the mobile app from the App Store and Google Play by scanning t
 
 
 
+## 📖 Documentation
+
+For detailed information on the technical side of the project, please refer to the following guides:
+
+- **[Tech Stack](docs/TECH_STACK.md)**: Technologies and libraries used
+- **[Deployment Guide (AWS)](docs/DEPLOY_AWS.md)**: How to deploy to AWS
+- **[Mobile Deployment](docs/DEPLOY_MOBILE.md)**: Android & iOS build process
+- **[Authentication Setup](docs/AUTH_CONFIG.md)**: Google & Apple login configuration
+
 ## ⚠️ Data Accuracy Note
 
 Some data may not be completely accurate. For example: there are generally recognized to be **195 countries** in the world (193 UN member states + 2 observer states), but this application includes **~176 countries/territories** based on the Natural Earth dataset used. The map data is sourced from publicly available GeoJSON/TopoJSON datasets, and the exact count may vary depending on the data source and how territories are classified. This is common across different mapping applications and datasets.
