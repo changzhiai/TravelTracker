@@ -11,11 +11,12 @@ interface SignInModalProps {
     onClose: () => void;
     onLoginSuccess: (username: string) => void;
     initialMode?: Mode;
+    onModeChange?: (mode: Mode) => void;
 }
 
 type Mode = 'signin' | 'register' | 'reset';
 
-export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'signin' }: SignInModalProps) {
+export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'signin', onModeChange }: SignInModalProps) {
     const [mode, setMode] = useState<Mode>(initialMode);
 
     // Sync mode when initialMode prop changes (e.g. from URL navigation)
@@ -198,6 +199,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                 if (result.success) {
                     alert('Password updated successfully. Please sign in with your new password.');
                     setMode('signin');
+                    if (onModeChange) onModeChange('signin');
                     setUsername('');
                     setPassword('');
                     setEmail('');
@@ -222,7 +224,9 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
     };
 
     const toggleMode = () => {
-        setMode(mode === 'signin' ? 'register' : 'signin');
+        const newMode = mode === 'signin' ? 'register' : 'signin';
+        setMode(newMode);
+        if (onModeChange) onModeChange(newMode);
         setError(null);
     };
 
@@ -445,6 +449,7 @@ export function SignInModal({ isOpen, onClose, onLoginSuccess, initialMode = 'si
                             type="button"
                             onClick={() => {
                                 setMode('reset');
+                                if (onModeChange) onModeChange('reset');
                                 setResetStep('email');
                                 setError(null);
                             }}
