@@ -131,6 +131,10 @@ function App() {
         return;
       }
 
+      // If we are navigating to a non-modal route, close open modals
+      setIsSignInModalOpen(false);
+      setIsAboutModalOpen(false);
+
       const scope = getInitialScope();
       setCurrentScope(scope);
     };
@@ -481,9 +485,21 @@ function App() {
   const handleLoginSuccess = useCallback((username: string) => {
     // Persist welcome message intent
     localStorage.setItem('travel_tracker_welcome_user', username);
-    // Reload immediately to get a fresh state - avoids "double refresh" visual
+
+    // Clean up URL if it's an auth modal path, restoring the base map scope before reload
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/login' || path === '/register' || path === '/reset') {
+      const scopeMap: Record<Scope, string> = {
+        world: '/world', usa: '/usa', usaParks: '/usa-parks',
+        europe: '/europe', china: '/china', india: '/india'
+      };
+      const newPath = scopeMap[currentScope] + window.location.search;
+      window.history.replaceState({}, '', newPath);
+    }
+
+    // Reload immediately to get a fresh state
     window.location.reload();
-  }, []);
+  }, [currentScope]);
 
   const handleLogout = useCallback(() => {
     authService.logout();
@@ -585,17 +601,6 @@ function App() {
       } else {
         setModalMode(path === '/register' ? 'register' : path === '/reset' ? 'reset' : 'signin');
         setIsSignInModalOpen(true);
-      }
-
-      // Clean up URL visually so it goes back to the map scope without reloading, EXCEPT for about which should persist.
-      if (path !== '/about') {
-        const scopeMap: Record<Scope, string> = {
-          world: '/world', usa: '/usa', usaParks: '/usa-parks',
-          europe: '/europe', china: '/china', india: '/india'
-        };
-        // Preserve search parameters (like tokens) when cleaning up modal paths
-        const newPath = scopeMap[currentScope] + window.location.search;
-        window.history.replaceState({}, '', newPath);
       }
     }
   }, [currentScope]);
@@ -3659,6 +3664,7 @@ function App() {
                   <button
                     onClick={() => {
                       setIsAboutModalOpen(true);
+                      window.history.pushState({}, '', '/about' + window.location.search);
                       const dropdown = document.getElementById('user-dropdown');
                       if (dropdown) dropdown.classList.add('hidden');
                     }}
@@ -3682,7 +3688,11 @@ function App() {
               </div>
             ) : (
               <button
-                onClick={() => setIsSignInModalOpen(true)}
+                onClick={() => {
+                  setModalMode('signin');
+                  setIsSignInModalOpen(true);
+                  window.history.pushState({}, '', '/login' + window.location.search);
+                }}
                 className="h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg sm:rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center"
               >
                 Sign In
@@ -4255,9 +4265,23 @@ function App() {
       {/* Auth Modal */}
       <SignInModal
         isOpen={isSignInModalOpen}
-        onClose={() => setIsSignInModalOpen(false)}
+        onClose={() => {
+          setIsSignInModalOpen(false);
+          const path = window.location.pathname.toLowerCase();
+          if (path === '/login' || path === '/register' || path === '/reset') {
+            const scopeMap: Record<Scope, string> = {
+              world: '/world', usa: '/usa', usaParks: '/usa-parks',
+              europe: '/europe', china: '/china', india: '/india'
+            };
+            window.history.pushState({}, '', scopeMap[currentScope]);
+          }
+        }}
         onLoginSuccess={handleLoginSuccess}
         initialMode={modalMode}
+        onModeChange={(newMode) => {
+          const path = newMode === 'register' ? '/register' : newMode === 'reset' ? '/reset' : '/login';
+          window.history.pushState({}, '', path + window.location.search);
+        }}
       />
 
       {/* Profile Modal */}
@@ -4333,7 +4357,9 @@ function App() {
               setProfileInitialTab('stats');
               setIsProfileModalOpen(true);
             } else {
+              setModalMode('signin');
               setIsSignInModalOpen(true);
+              window.history.pushState({}, '', '/login' + window.location.search);
             }
           }}
           className={`group flex flex-col items-center justify-center w-16 h-12 transition-all ${(isProfileModalOpen || isSignInModalOpen) ? 'text-indigo-600 font-bold' : 'text-gray-500 hover:text-indigo-500'}`}
