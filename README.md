@@ -22,14 +22,14 @@ You can download the mobile app from the App Store and Google Play by scanning t
 
 ## ✨ Features
 
-- 🌍 **World Map View** - Track countries you've visited (~177 countries)
+- 🌍 **World Map View** - Track countries you've visited (240+ countries & territories)
 - 🇺🇸 **USA Map View** - Track US states you've visited (50 states)
 - 🏞️ **US National Parks View** - Explore and track 63 US national parks
 - 🇪🇺 **Europe Map View** - Track European countries you've visited
 - 🇨🇳 **China Map View** - Track Chinese provinces you've visited
 - 🇮🇳 **India Map View** - Track Indian states and union territories (36 total)
 - 🎯 **Interactive Selection** - Click on map or list to select locations
-- 🔍 **Search Functionality** - Quickly find countries/states/provinces
+- 🔍 **Search Functionality** - Quickly find countries/states/provinces (supports formal names like *Republic of Maldives* or *Kingdom of Bahrain*)
 - 🏷️ **Labels** - Show labels for selected locations
 - 🔍 **Zoom & Pan** - Interactive map navigation with smooth controls
 - 💾 **Export** - Save high-quality PNG images (3x resolution)
@@ -79,7 +79,7 @@ For detailed information on the technical side of the project, please refer to t
 
 ## ⚠️ Data Accuracy Note
 
-Some data may not be completely accurate. For example: there are generally recognized to be **195 countries** in the world (193 UN member states + 2 observer states), but this application includes **~176 countries/territories** based on the Natural Earth dataset used. The map data is sourced from publicly available GeoJSON/TopoJSON datasets, and the exact count may vary depending on the data source and how territories are classified. This is common across different mapping applications and datasets.
+The world map dataset includes **240+ countries and territories** based on the 50m Natural Earth dataset, covering all 195 UN member states + observer states (including island states and microstates such as the **Republic of Maldives**, **Kingdom of Bahrain**, Singapore, Malta, Monaco, Vatican City, Seychelles, Mauritius, etc.). Map data is sourced from publicly available GeoJSON/TopoJSON datasets.
 
 
 ## 📧 Contact

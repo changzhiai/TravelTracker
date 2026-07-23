@@ -72,16 +72,19 @@ const EUROPE_COUNTRIES = new Set([
 
 const WORLD_TO_EUROPE_MAPPING: Record<string, string> = {
   "Macedonia": "The former Yugoslav Republic of Macedonia",
+  "North Macedonia": "The former Yugoslav Republic of Macedonia",
   "Moldova": "Republic of Moldova",
   "Republic of Serbia": "Serbia",
-  "England": "United Kingdom"
+  "England": "United Kingdom",
+  "Vatican City": "Holy See (Vatican City)"
 };
 
 const EUROPE_TO_WORLD_MAPPING: Record<string, string> = {
-  "The former Yugoslav Republic of Macedonia": "Macedonia",
+  "The former Yugoslav Republic of Macedonia": "North Macedonia",
   "Republic of Moldova": "Moldova",
   "Serbia": "Republic of Serbia",
-  "United Kingdom": "England"
+  "United Kingdom": "United Kingdom",
+  "Holy See (Vatican City)": "Vatican City"
 };
 
 import { PrivacyPolicy } from './components/PrivacyPolicy';
@@ -769,8 +772,7 @@ function App() {
           };
         });
       setWorldCountryFeatures(features);
-      console.log(`World GeoJSON map data loaded successfully. Found ${features.length} countries (excluding Antarctica).`);
-      console.log("Note: This dataset includes 176 unique countries. UN recognizes 195 countries total.");
+      console.log(`World GeoJSON map data loaded successfully. Found ${features.length} countries/territories (excluding Antarctica).`);
     } catch (error) {
       console.error("Error loading world map data:", error);
       throw error;
@@ -3507,10 +3509,26 @@ function App() {
     return Array.from(names).sort();
   }, [selectableFeatures]);
 
-  // Filter locations based on search
+  // Filter locations based on search (matches name, formal_name, or aliases)
   const filteredLocations = useMemo(() => {
-    return listItems.filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [listItems, searchQuery]);
+    if (!searchQuery.trim()) return listItems;
+    const query = searchQuery.toLowerCase().trim();
+
+    const featureSearchTextMap = new Map<string, string>();
+    selectableFeatures.forEach(f => {
+      const name = f.properties.name;
+      if (!name) return;
+      const formal = String(f.properties.formal_name || '');
+      const aliases = Array.isArray(f.properties.aliases) ? (f.properties.aliases as string[]).join(' ') : '';
+      featureSearchTextMap.set(name, `${name} ${formal} ${aliases}`.toLowerCase());
+    });
+
+    return listItems.filter(name => {
+      if (name.toLowerCase().includes(query)) return true;
+      const searchText = featureSearchTextMap.get(name);
+      return searchText ? searchText.includes(query) : false;
+    });
+  }, [listItems, searchQuery, selectableFeatures]);
 
   return (
     <div
