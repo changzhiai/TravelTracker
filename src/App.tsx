@@ -236,12 +236,12 @@ function App() {
               '% India';
 
   const scopeOptions: ScopeOption[] = [
-    { value: 'world', label: 'World', iconType: 'emoji', icon: '🌍' },
+    { value: 'world', label: 'World', iconType: 'flag', flagCode: 'world' },
     { value: 'usa', label: 'USA', iconType: 'flag', flagCode: 'us' },
     { value: 'europe', label: 'Europe', iconType: 'flag', flagCode: 'eu' },
     { value: 'china', label: 'China', iconType: 'flag', flagCode: 'cn' },
     { value: 'india', label: 'India', iconType: 'flag', flagCode: 'in' },
-    { value: 'usaParks', label: 'US NPs', iconType: 'emoji', icon: '🏞️' },
+    { value: 'usaParks', label: 'US NPs', iconType: 'flag', flagCode: 'parks' },
   ];
 
   const currentScopeOption = scopeOptions.find(option => option.value === currentScope) ?? scopeOptions[0];
