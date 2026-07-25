@@ -8,6 +8,8 @@ interface SeoMeta {
   ogTitle: string;
   ogDescription: string;
   jsonLd: object;
+  heading: string;
+  semanticDescription: string;
 }
 
 const SITE_URL = 'https://travel-tracker.org';
@@ -20,6 +22,8 @@ const SEO_CONFIG: Record<Scope, SeoMeta> = {
     canonicalPath: '/world',
     ogTitle: 'World Travel Map - Track Your Visited Countries',
     ogDescription: 'Mark every country you have visited on an interactive world map. Track your travel progress and share your journey.',
+    heading: 'World Travel Map - Track Visited Countries',
+    semanticDescription: 'Interactive world map to track visited countries. Click any country to mark it as visited. Supports 240+ countries and territories with travel statistics, completion percentages, and cloud sync across devices.',
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -43,6 +47,8 @@ const SEO_CONFIG: Record<Scope, SeoMeta> = {
     canonicalPath: '/usa',
     ogTitle: 'US States Travel Map - Track All 50 States You Have Visited',
     ogDescription: 'How many US states have you been to? Mark your visited states on an interactive map and track your progress to all 50.',
+    heading: 'US States Travel Map - Track All 50 States',
+    semanticDescription: 'Interactive USA map to track visited states. Click any state to mark it as visited. Track your progress across all 50 states with completion percentages and travel statistics.',
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -66,6 +72,8 @@ const SEO_CONFIG: Record<Scope, SeoMeta> = {
     canonicalPath: '/usa-parks',
     ogTitle: 'US National Parks Tracker - How Many Parks Have You Visited?',
     ogDescription: 'Track your visits to US national parks on an interactive map. Mark parks you have been to and discover which ones to visit next.',
+    heading: 'US National Parks Tracker - Mark Visited Parks',
+    semanticDescription: 'Interactive map to track visited US national parks. Click any park to mark it as visited. Covers all major national parks from Yellowstone to Yosemite, Grand Canyon to Zion, with visit tracking and statistics.',
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -89,6 +97,8 @@ const SEO_CONFIG: Record<Scope, SeoMeta> = {
     canonicalPath: '/europe',
     ogTitle: 'Europe Travel Map - Track Visited European Countries',
     ogDescription: 'How many European countries have you been to? Mark your visited countries on an interactive Europe map.',
+    heading: 'Europe Travel Map - Track Visited European Countries',
+    semanticDescription: 'Interactive Europe map to track visited countries. Click any European country to mark it as visited. Track your coverage across all European nations with travel statistics and completion percentages.',
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -112,6 +122,8 @@ const SEO_CONFIG: Record<Scope, SeoMeta> = {
     canonicalPath: '/china',
     ogTitle: 'China Province Map - Track Your Visited Provinces',
     ogDescription: 'Mark the Chinese provinces you have visited on an interactive map. Track your exploration across all of China.',
+    heading: 'China Province Map - Track Visited Provinces',
+    semanticDescription: 'Interactive China map to track visited provinces and regions. Click any province to mark it as visited. Track your exploration across all Chinese provinces, autonomous regions, and municipalities.',
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -135,6 +147,8 @@ const SEO_CONFIG: Record<Scope, SeoMeta> = {
     canonicalPath: '/india',
     ogTitle: 'India States Map - Track Your Visited States',
     ogDescription: 'Mark the Indian states you have visited on an interactive map. Track your journey across all of India.',
+    heading: 'India States Map - Track Visited States',
+    semanticDescription: 'Interactive India map to track visited states and union territories. Click any state to mark it as visited. Track your exploration across all Indian states and territories with statistics.',
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -198,4 +212,17 @@ export function updateSeoMeta(scope: Scope): void {
     document.head.appendChild(jsonLdScript);
   }
   jsonLdScript.textContent = JSON.stringify(config.jsonLd);
+
+  const mapContainer = document.getElementById('map-container');
+  if (mapContainer) {
+    mapContainer.setAttribute('aria-label', config.heading);
+    let seoBlock = document.getElementById('seo-hidden-content');
+    if (!seoBlock) {
+      seoBlock = document.createElement('div');
+      seoBlock.id = 'seo-hidden-content';
+      seoBlock.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0';
+      mapContainer.appendChild(seoBlock);
+    }
+    seoBlock.innerHTML = `<h2>${config.heading}</h2><p>${config.semanticDescription}</p>`;
+  }
 }
