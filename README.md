@@ -4,44 +4,34 @@
 
 <img src="public/logo_tt.png" width="200">
 
-An interactive map application that helps you track your travels. It can give you total numbers and percentages of how many countries in the world, US states, European countries, Chinese provinces, Indian states, and US national parks you have visited. It also allows you to login and save your travel data to the cloud, and export, share, or download the maps.
 
-## 🎯 Access the Application
+An interactive map application that helps you track your travels. It can give you total numbers and percentages of how many countries in the world, US states, European countries, Chinese provinces, Indian states, and US national parks you have visited — with totals, percentages, and exportable map images. It also allows you to login and save your travel data to the cloud, and export, share, or download the maps.
 
-**👉 1. The dynamic website**
+## Try it
 
-You can check the dynamic website at https://travel-tracker.org/
+**Web:** [travel-tracker.org](https://travel-tracker.org/)
 
-**👉 2. The mobile app**
+**Mobile:** Download from the App Store or Google Play by scanning the QR code below:
 
-You can download the mobile app from the App Store and Google Play by scanning the QR code below:
+![QR Code](docs/figures/download.png)
 
-![QR Code](docs/figures/download.png)  
+## Features
 
+- **World Map** — 240+ countries & territories
+- **USA** — all 50 states
+- **US National Parks** — 63 parks
+- **Europe** — European countries
+- **China** — provinces & regions
+- **India** — 36 states and union territories
+- Click-to-select on map or from the sidebar list
+- Search by common or formal name (e.g. "Republic of Maldives", "Kingdom of Bahrain")
+- Zoom, pan, labels
+- Export as high-res PNG (3x)
+- Stats: count and percentage of visited locations
+- Google & Apple login, cloud sync
+- Works on desktop and mobile
 
-
-## ✨ Features
-
-- 🌍 **World Map View** - Track countries you've visited (240+ countries & territories)
-- 🇺🇸 **USA Map View** - Track US states you've visited (50 states)
-- 🏞️ **US National Parks View** - Explore and track 63 US national parks
-- 🇪🇺 **Europe Map View** - Track European countries you've visited
-- 🇨🇳 **China Map View** - Track Chinese provinces you've visited
-- 🇮🇳 **India Map View** - Track Indian states and union territories (36 total)
-- 🎯 **Interactive Selection** - Click on map or list to select locations
-- 🔍 **Search Functionality** - Quickly find countries/states/provinces (supports formal names like *Republic of Maldives* or *Kingdom of Bahrain*)
-- 🏷️ **Labels** - Show labels for selected locations
-- 🔍 **Zoom & Pan** - Interactive map navigation with smooth controls
-- 💾 **Export** - Save high-quality PNG images (3x resolution)
-- 📊 **Statistics** - View count and percentage of visited locations
-- 📱 **Responsive Design** - Works beautifully on desktop and mobile
-- 🎨 **Modern UI** - Glassmorphism design with gradient effects
-- 🔐 **Authentication** - Google and Apple login
-
-
-
-## 📸 Map Views
-
+## Screenshots
 
 <div align="center">
 
@@ -65,23 +55,17 @@ You can download the mobile app from the App Store and Google Play by scanning t
 
 </div>
 
+## Docs
 
+- [Tech Stack](docs/TECH_STACK.md)
+- [Deployment (AWS)](docs/DEPLOY_AWS.md)
+- [Mobile Builds](docs/DEPLOY_MOBILE.md)
+- [Auth Setup](docs/AUTH_CONFIG.md)
 
+## Data Accuracy
 
-## 📖 Documentation
+The world map uses the 50m Natural Earth dataset — 240+ countries and territories, all 195 UN member/observer states, including island states and microstates (Maldives, Bahrain, Singapore, Malta, Monaco, Vatican City, Seychelles, Mauritius, etc.).
 
-For detailed information on the technical side of the project, please refer to the following guides:
-
-- **[Tech Stack](docs/TECH_STACK.md)**: Technologies and libraries used
-- **[Deployment Guide (AWS)](docs/DEPLOY_AWS.md)**: How to deploy to AWS
-- **[Mobile Deployment](docs/DEPLOY_MOBILE.md)**: Android & iOS build process
-- **[Authentication Setup](docs/AUTH_CONFIG.md)**: Google & Apple login configuration
-
-## ⚠️ Data Accuracy Note
-
-The world map dataset includes **240+ countries and territories** based on the 50m Natural Earth dataset, covering all 195 UN member states + observer states (including island states and microstates such as the **Republic of Maldives**, **Kingdom of Bahrain**, Singapore, Malta, Monaco, Vatican City, Seychelles, Mauritius, etc.). Map data is sourced from publicly available GeoJSON/TopoJSON datasets.
-
-
-## 📧 Contact
+## Contact
 
 For questions, suggestions, or feedback, please contact maintainer: **changzhiai@gmail.com**
