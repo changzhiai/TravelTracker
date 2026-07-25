@@ -53,7 +53,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             Contributions
                         </h3>
                         <p className="text-gray-600 leading-relaxed text-sm text-justify">
-                            This project is built with passion. Special thanks to the open-source community for the tools and libraries that made this possible. You are open to contribute ideas, bug reports, and feature requests to our <a href="https://github.com/changzhiai/TravelTracker" className="text-indigo-600 hover:text-indigo-800 font-medium">GitHub repository</a>.
+                            This project is built with passion. Special thanks to the open-source community for the tools and libraries that made this possible. You are open to contribute ideas, bug reports, and feature requests to our team.
                         </p>
                     </div>
 
@@ -68,7 +68,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             Contacts
                         </h3>
                         <p className="text-gray-600 leading-relaxed text-sm text-justify">
-                            Have questions, suggestions, or feedback? Feel free to reach out to us at <a href="mailto:changzhiai@gmail.com" className="text-indigo-600 hover:text-indigo-800 font-medium">changzhiai@gmail.com</a>.
+                            Have questions, suggestions, or feedback? Feel free to reach out to us at <a href="mailto:support@travel-tracker.org" className="text-indigo-600 hover:text-indigo-800 font-medium">support@travel-tracker.org</a>.
                         </p>
                     </div>
 

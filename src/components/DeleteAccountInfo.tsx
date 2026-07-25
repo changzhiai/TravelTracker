@@ -53,7 +53,7 @@ export const DeleteAccountInfo: React.FC = () => {
                         </p>
                         <div className="ml-11">
                             <a
-                                href="mailto:changzhiai@gmail.com?subject=Travel Tracker Account Deletion Request"
+                                href="mailto:support@travel-tracker.org?subject=Travel Tracker Account Deletion Request"
                                 className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 hover:text-red-600 transition-colors"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
