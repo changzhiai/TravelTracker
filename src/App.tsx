@@ -90,6 +90,7 @@ const EUROPE_TO_WORLD_MAPPING: Record<string, string> = {
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { DeleteAccountInfo } from './components/DeleteAccountInfo';
 import { DownloadApp } from './components/DownloadApp';
+import { updateSeoMeta } from './seo';
 
 function App() {
   // Simple routing for static pages
@@ -1796,6 +1797,10 @@ function App() {
       window.history.pushState({}, '', pathMap[scope]);
     }
   }, [currentScope, loadUSAData, loadNationalParksData, loadEuropeData, loadChinaData, loadIndiaData, loadWorldData]);
+
+  useEffect(() => {
+    updateSeoMeta(currentScope);
+  }, [currentScope]);
 
   const handleScopeOptionClick = useCallback((scopeValue: Scope) => {
     handleScopeSelection(scopeValue);

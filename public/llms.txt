@@ -1,0 +1,55 @@
+# Travel Tracker
+
+> Free interactive travel map app to track visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks.
+
+## What is Travel Tracker?
+
+Travel Tracker is a free web and mobile application that lets users mark places they have visited on interactive maps. Users can track their travel progress across multiple map categories, see completion percentages, and share their travel stats with friends. Available on web, iOS, and Android.
+
+## Maps Available
+
+- **World Map** (https://travel-tracker.org/world): Track visited countries across 240+ countries and territories
+- **USA States** (https://travel-tracker.org/usa): Mark all 50 US states you have visited
+- **US National Parks** (https://travel-tracker.org/usa-parks): Track visits to US national parks from Yellowstone to Yosemite
+- **Europe** (https://travel-tracker.org/europe): Track visited European countries
+- **China** (https://travel-tracker.org/china): Track visited Chinese provinces and regions
+- **India** (https://travel-tracker.org/india): Track visited Indian states and union territories
+
+## Key Features
+
+- Interactive maps with click-to-mark functionality
+- Travel statistics and completion percentages
+- Cloud sync across devices with free account
+- Share travel maps as images
+- Available on web, iOS, and Android
+- No subscription required — completely free
+
+## Links
+
+- Website: https://travel-tracker.org
+- Download: https://travel-tracker.org/download
+- iOS App: https://apps.apple.com/il/app/travel-tracker-visited-maps/id6758506116
+- Android App: https://play.google.com/store/apps/details?id=com.traveltracker.app
+- Privacy Policy: https://travel-tracker.org/privacy
+- About: https://travel-tracker.org/about
+- Contact: support@travel-tracker.org
+
+## Frequently Asked Questions
+
+### What is the best free travel map app?
+Travel Tracker is a free interactive travel map app available on web, iOS, and Android. It lets you mark visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks on interactive maps.
+
+### How do I track which countries I have visited?
+Visit https://travel-tracker.org/world and click on any country to mark it as visited. Create a free account to save your progress across devices.
+
+### Can I track US states I have visited?
+Yes. Visit https://travel-tracker.org/usa to mark all 50 US states you have been to and see your completion percentage.
+
+### How many national parks can I track?
+Visit https://travel-tracker.org/usa-parks to track your visits to US national parks on an interactive map.
+
+### Is Travel Tracker free?
+Yes, Travel Tracker is completely free with no subscription required. Create an account to sync your data across devices.
+
+### Is there a mobile app?
+Yes. Travel Tracker is available on iOS (App Store) and Android (Google Play) as a free download.
