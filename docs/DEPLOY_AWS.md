@@ -225,3 +225,25 @@ Restart the PM2 process to apply changes:
 ```bash
 pm2 restart travel-tracker
 ```
+
+## 6. Notify Search Engines (IndexNow)
+
+After deployment, ping Bing/Yandex to re-index updated pages immediately:
+```bash
+curl -X POST "https://api.indexnow.org/indexnow" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "travel-tracker.org",
+    "key": "e66d7d36701179f1bd7e88c94feae951",
+    "urlList": [
+      "https://travel-tracker.org/world",
+      "https://travel-tracker.org/usa",
+      "https://travel-tracker.org/usa-parks",
+      "https://travel-tracker.org/europe",
+      "https://travel-tracker.org/china",
+      "https://travel-tracker.org/india",
+      "https://travel-tracker.org/download",
+      "https://travel-tracker.org/about"
+    ]
+  }'
+```
