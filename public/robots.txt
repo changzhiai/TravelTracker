@@ -1,4 +1,34 @@
 User-agent: *
+Allow: /world
+Allow: /usa
+Allow: /usa-parks
+Allow: /europe
+Allow: /china
+Allow: /india
+Allow: /download
+Allow: /about
+Allow: /privacy
+Disallow: /reset
+
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+Crawl-delay: 5
+
+User-agent: Bytespider
+Allow: /
+Crawl-delay: 5
+
+User-agent: Applebot-Extended
 Allow: /
 
 Sitemap: https://travel-tracker.org/sitemap.xml

@@ -117,7 +117,7 @@ export const PrivacyPolicy: React.FC = () => {
                         <h2 className="text-2xl font-bold text-gray-800 mb-3">7. Contact Us</h2>
                         <p>
                             If you have questions, concerns, or comments about this policy, you may contact us at:
-                            <a href="mailto:changzhiai@gmail.com" className="text-indigo-600 hover:underline"> changzhiai@gmail.com</a>
+                            <a href="mailto:support@travel-tracker.org" className="text-indigo-600 hover:underline"> support@travel-tracker.org</a>
                         </p>
                     </section>
                 </div>
