@@ -1,26 +1,26 @@
 # Travel Tracker
 
-> Free interactive travel map app to track visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks.
+> Free interactive travel checklist app to track and check off visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks.
 
 ## What is Travel Tracker?
 
-Travel Tracker is a free web and mobile application that lets users mark places they have visited on interactive maps. Users can track their travel progress across multiple map categories, see completion percentages, and share their travel stats with friends. Available on web, iOS, and Android.
+Travel Tracker is a free web and mobile application that works as your travel bucket list checklist. Mark places you have visited on interactive maps, check them off your list, see completion percentages, and share your travel stats with friends. Available on web, iOS, and Android.
 
-## Maps Available
+## Maps & Checklists Available
 
-- **World Map** (https://travel-tracker.org/world): Track visited countries across 240+ countries and territories
-- **USA States** (https://travel-tracker.org/usa): Mark all 50 US states you have visited
-- **US National Parks** (https://travel-tracker.org/usa-parks): Track visits to US national parks from Yellowstone to Yosemite
-- **Europe** (https://travel-tracker.org/europe): Track visited European countries
-- **China** (https://travel-tracker.org/china): Track visited Chinese provinces and regions
-- **India** (https://travel-tracker.org/india): Track visited Indian states and union territories
+- **World Map — Countries to Visit Checklist** (https://travel-tracker.org/world): Check off visited countries across 240+ countries and territories
+- **USA States — 50 States Checklist** (https://travel-tracker.org/usa): Check off all 50 US states on your bucket list
+- **US National Parks — National Parks Checklist** (https://travel-tracker.org/usa-parks): Check off all 63 national parks from Yellowstone to Yosemite
+- **Europe — European Countries Checklist** (https://travel-tracker.org/europe): Check off visited European countries
+- **China — Chinese Provinces Checklist** (https://travel-tracker.org/china): Check off visited Chinese provinces and regions
+- **India — Indian States Checklist** (https://travel-tracker.org/india): Check off visited Indian states and union territories
 
 ## Key Features
 
-- Interactive maps with click-to-mark functionality
-- Travel statistics and completion percentages
+- Interactive maps with click-to-check-off functionality
+- Travel bucket list with completion percentages
 - Cloud sync across devices with free account
-- Share travel maps as images
+- Share travel checklist maps as images
 - Available on web, iOS, and Android
 - No subscription required — completely free
 
@@ -36,20 +36,29 @@ Travel Tracker is a free web and mobile application that lets users mark places 
 
 ## Frequently Asked Questions
 
-### What is the best free travel map app?
-Travel Tracker is a free interactive travel map app available on web, iOS, and Android. It lets you mark visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks on interactive maps.
+### What is the best free travel checklist app?
+Travel Tracker is a free interactive travel checklist app available on web, iOS, and Android. It lets you check off visited countries, US states, European countries, Chinese provinces, Indian states, and US national parks on interactive maps.
 
-### How do I track which countries I have visited?
-Visit https://travel-tracker.org/world and click on any country to mark it as visited. Create a free account to save your progress across devices.
+### Where can I find a countries to visit checklist?
+Visit https://travel-tracker.org/world for an interactive countries to visit checklist. Click any country to check it off your bucket list. Covers 240+ countries and territories.
 
-### Can I track US states I have visited?
-Yes. Visit https://travel-tracker.org/usa to mark all 50 US states you have been to and see your completion percentage.
+### Is there a 50 states checklist I can check off?
+Yes. Visit https://travel-tracker.org/usa for a 50 states checklist. Click any state to check it off and track your progress across all 50 states.
 
-### How many national parks can I track?
-Visit https://travel-tracker.org/usa-parks to track your visits to US national parks on an interactive map.
+### Where can I find a national parks checklist to check off?
+Visit https://travel-tracker.org/usa-parks for a national parks checklist with all 63 US national parks to visit and check off, from Yellowstone to Yosemite.
+
+### Is there a European countries checklist?
+Yes. Visit https://travel-tracker.org/europe for a European countries checklist. Check off each country as you visit it and see your coverage percentage.
+
+### Is there a Chinese provinces checklist?
+Yes. Visit https://travel-tracker.org/china for a Chinese provinces checklist to check off as you explore China.
+
+### Is there an Indian states checklist?
+Yes. Visit https://travel-tracker.org/india for an Indian states checklist covering all 36 states and union territories to visit and check off.
 
 ### Is Travel Tracker free?
-Yes, Travel Tracker is completely free with no subscription required. Create an account to sync your data across devices.
+Yes, Travel Tracker is completely free with no subscription required. Create an account to sync your checklist progress across devices.
 
 ### Is there a mobile app?
 Yes. Travel Tracker is available on iOS (App Store) and Android (Google Play) as a free download.
