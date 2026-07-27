@@ -247,3 +247,13 @@ curl -X POST "https://api.indexnow.org/indexnow" \
     ]
   }'
 ```
+
+## 7. pm2 management
+
+start.sh
+```bash
+cd TravelTracker; pm2 start system.config.cjs --env production; cd ..;
+cd MapParser; pm2 start ecosystem.config.cjs --env production; cd ..;
+cd MapCombiner; pm2 start ecosystem.config.cjs --env production; cd ..;
+cd PeriodicTable; pm2 start ecosystem.config.cjs --env production; cd ..;
+```
